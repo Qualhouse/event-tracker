@@ -182,6 +182,14 @@ function doGet(){return ContentService.createTextOutput(JSON.stringify({status:'
     <div style="margin-top:14px;display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="showView('badges')" data-i18n="print_badges"></button>
       <button class="btn btn-success" onclick="showView('scanner')" data-i18n="open_scanner"></button>
+      <button class="btn btn-secondary" onclick="generateSupplierLink()" data-i18n="share_supplier_link"></button>
+    </div>
+    <div id="supplierLinkResult" class="hidden" style="margin-top:12px">
+      <div class="config-section" style="margin-bottom:0">
+        <label data-i18n="supplier_link_label"></label>
+        <input type="text" id="supplierLinkUrl" readonly onclick="this.select()" style="margin-top:4px;font-size:11px">
+        <p style="font-size:11px;color:var(--text-dim);margin-top:8px" data-i18n="supplier_link_desc"></p>
+      </div>
     </div>
   </div>
 </div>
@@ -223,7 +231,9 @@ function doGet(){return ContentService.createTextOutput(JSON.stringify({status:'
     <h1 style="text-align:center" data-i18n="scan_title"></h1>
     <div class="scanner-stand-select">
       <label data-i18n="your_stand"></label>
-      <select id="scannerStandSelect" onchange="saveSelectedStand()"><option value="" data-i18n="select_stand"></option></select>
+      <select id="scannerStandSelect" onchange="saveSelectedStand()" style="font-size:15px;padding:12px 16px;text-align:center;background:var(--accent-glow);border-color:var(--accent)">
+        <option value="" data-i18n="select_stand"></option>
+      </select>
     </div>
     <div id="video-container">
       <video id="video" autoplay playsinline></video><canvas id="canvas"></canvas>
@@ -320,7 +330,10 @@ const LANG = {pt:{
   cm_tag_nointerest:'Sem interesse',cm_notes_label:'Notas adicionais',cm_notes_ph:'Que produtos discutiram, observações...',
   cm_save:'Guardar e Fechar',cm_skip:'Saltar',
   total_scans:'Total de Leituras',unique_visitors:'Visitantes Únicos',active_stands:'Stands Ativos',avg_visits:'Média Visitas/Pessoa',
-  already_scanned:'já lido neste stand',unknown_badge:'Crachá desconhecido',select_stand_first:'Selecione primeiro o seu stand!',
+  already_scanned:'já lido neste stand',unknown_badge:'Crachá desconhecido',select_stand_first:'Escreva primeiro o nome do seu stand!',
+  stand_input_ph:'Escreva o nome do seu stand',
+  share_supplier_link:'📤 Gerar link para expositores',supplier_link_label:'Link para partilhar com os expositores:',
+  supplier_link_desc:'Envie este link aos expositores. Ao abrirem, vão diretamente para o scanner com a lista de stands já carregada.',
   enter_name_email:'Insira pelo menos nome e email.',email_exists:'Este email já está registado como',
   manual_entry:'entrada manual',no_scans:'Sem leituras para exportar.',no_data:'Sem dados.'
 },en:{
@@ -356,7 +369,10 @@ const LANG = {pt:{
   cm_tag_nointerest:'No interest',cm_notes_label:'Additional notes',cm_notes_ph:'Which products discussed, observations...',
   cm_save:'Save & Close',cm_skip:'Skip',
   total_scans:'Total Scans',unique_visitors:'Unique Visitors',active_stands:'Active Stands',avg_visits:'Avg Visits/Person',
-  already_scanned:'already scanned at this stand',unknown_badge:'Unknown badge',select_stand_first:'Please select your stand first!',
+  already_scanned:'already scanned at this stand',unknown_badge:'Unknown badge',select_stand_first:'Please enter your stand name first!',
+  stand_input_ph:'Type your stand name',
+  share_supplier_link:'📤 Generate supplier link',supplier_link_label:'Link to share with suppliers:',
+  supplier_link_desc:'Send this link to suppliers. When they open it, they go directly to the scanner with the stands list ready.',
   enter_name_email:'Please enter at least name and email.',email_exists:'This email is already registered as',
   manual_entry:'manual entry',no_scans:'No scans to export.',no_data:'No data yet.'
 }};
@@ -415,19 +431,36 @@ function removeStand(i){state.stands.splice(i,1);renderStands();saveState();}
 function renderStands(){document.getElementById('standsGrid').innerHTML=state.stands.map((s,i)=>'<div class="stand-chip"><span>'+s+'</span><button class="remove" onclick="removeStand('+i+')">×</button></div>').join('');document.getElementById('step3Btn').disabled=state.stands.length===0;}
 function completeStep3(){saveState();showSetupStep(4);populateStandSelectors();}
 function renderSetupSummary(){document.getElementById('setupSummary').innerHTML='<strong>'+state.eventName+'</strong> · '+state.eventDate+'<br>📋 '+state.attendees.length+(curLang==='pt'?' participantes':' attendees')+' · 🏢 '+state.stands.length+' stands<br>☁️ Google Sheets: '+(state.sheetUrl?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--text-muted)">—</span>');}
-function populateStandSelectors(){['scannerStandSelect','filterStand'].forEach(id=>{const sel=document.getElementById(id);if(!sel)return;const cur=sel.value;const isF=id==='filterStand';sel.innerHTML='<option value="">'+(isF?t('all_stands'):t('select_stand'))+'</option>';state.stands.forEach(s=>{sel.innerHTML+='<option value="'+s+'" '+(s===cur?'selected':'')+'>'+s+'</option>';});});}
+function populateStandSelectors(){
+var stands = state.stands.length ? state.stands : urlStands;
+['scannerStandSelect','filterStand'].forEach(id=>{const sel=document.getElementById(id);if(!sel)return;const cur=sel.value;const isF=id==='filterStand';sel.innerHTML='<option value="">'+(isF?t('all_stands'):t('select_stand'))+'</option>';stands.forEach(s=>{sel.innerHTML+='<option value="'+s+'" '+(s===cur?'selected':'')+'>'+s+'</option>';});});
+}
 
 // ═══════ SCANNER ═══════
 let scannerRunning=false,lastScanTime=0;
 function startScanner(){populateStandSelectors();if(scannerRunning)return;const video=document.getElementById('video'),canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});
 navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:640}}}).then(stream=>{video.srcObject=stream;video.play();scannerRunning=true;requestAnimationFrame(function tick(){if(!scannerRunning)return;if(video.readyState===video.HAVE_ENOUGH_DATA){canvas.width=video.videoWidth;canvas.height=video.videoHeight;ctx.drawImage(video,0,0,canvas.width,canvas.height);const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);const code=jsQR(imageData.data,imageData.width,imageData.height,{inversionAttempts:'dontInvert'});if(code&&Date.now()-lastScanTime>1500){lastScanTime=Date.now();processScan(code.data);}}requestAnimationFrame(tick);});}).catch(()=>{document.getElementById('scanResult').innerHTML='<div class="scan-result error">Camera access denied.</div>';});}
-function processScan(data){const stand=document.getElementById('scannerStandSelect').value;if(!stand){showScanResult('error',t('select_stand_first'));return;}
-let att;if(data.startsWith('EVT:')){const parts=data.split(':');att=state.attendees.find(a=>a.id===parts[1]);}else{att=state.attendees.find(a=>a.email===data||a.id===data);}
+function processScan(data){const stand=document.getElementById('scannerStandSelect').value.trim();if(!stand){showScanResult('error',t('select_stand_first'));return;}
+// Extract attendee info from QR - format: EVT|id|name|email|phone|company
+let att=null;
+if(data.startsWith('EVT|')){
+  const parts=data.split('|');
+  if(parts.length>=4){
+    att={id:parts[1]||'',name:parts[2]||'',email:parts[3]||'',phone:parts[4]||'',company:parts[5]||''};
+  }
+} else if(data.startsWith('EVT:')){
+  // Legacy format support: EVT:id:name:email
+  const parts=data.split(':');
+  if(parts.length>=4) att={id:parts[1],name:parts[2],email:parts.slice(3).join(':'),phone:'',company:''};
+}
+if(!att){
+  const local=state.attendees.find(a=>a.email===data||a.id===data);
+  if(local) att=local;
+}
 if(!att){showScanResult('error',t('unknown_badge')+': '+data.substring(0,30));return;}
 if(state.scans.some(s=>s.attendeeId===att.id&&s.stand===stand)){showScanResult('duplicate',att.name+' '+t('already_scanned'));return;}
 if(navigator.vibrate)navigator.vibrate(100);
 showScanResult('success','✓ '+att.name);
-// Show comment modal
 showCommentModal(att,stand);
 }
 function showScanResult(type,msg){const el=document.getElementById('scanResult');el.innerHTML='<div class="scan-result '+type+'">'+msg+'</div>';setTimeout(()=>{el.innerHTML=''},3000);}
@@ -477,7 +510,7 @@ card.innerHTML='<div class="badge-header"><img src="'+LOGO+'" alt="Qualhouse" st
 '<div class="badge-body"><div class="badge-name">'+a.name+'</div><div class="badge-detail">'+a.email+'</div>'+(a.phone?'<div class="badge-detail">'+a.phone+'</div>':'')+(a.company?'<div class="badge-detail" style="font-weight:500">'+a.company+'</div>':'')+
 '<div class="qr-container" id="qr-'+a.id+'"></div><div class="badge-id">'+a.id+'</div></div>';
 grid.appendChild(card);
-setTimeout(()=>{new QRCode(document.getElementById('qr-'+a.id),{text:'EVT:'+a.id+':'+a.name+':'+a.email,width:130,height:130,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},10);});}
+setTimeout(()=>{new QRCode(document.getElementById('qr-'+a.id),{text:'EVT|'+a.id+'|'+a.name+'|'+a.email+'|'+(a.phone||'')+'|'+(a.company||''),width:130,height:130,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},10);});}
 
 // ═══════ WALK-IN ═══════
 function registerWalkin(){const name=document.getElementById('walkinName').value.trim(),email=document.getElementById('walkinEmail').value.trim(),phone=document.getElementById('walkinPhone').value.trim(),company=document.getElementById('walkinCompany').value.trim();
@@ -489,7 +522,7 @@ const bc=document.getElementById('walkinBadgeCard');
 bc.innerHTML='<div class="badge-header"><img src="'+LOGO+'" alt="Qualhouse" style="height:20px;margin-bottom:2px"><div style="font-size:9px;color:#999">'+state.eventName+'</div></div>'+
 '<div class="badge-body"><div class="badge-name">'+name+'</div><div class="badge-detail">'+email+'</div>'+(phone?'<div class="badge-detail">'+phone+'</div>':'')+(company?'<div class="badge-detail">'+company+'</div>':'')+
 '<div class="qr-container" id="qr-w-'+id+'"></div><div class="badge-id">'+id+' <span style="background:#e28a32;color:#fff;padding:1px 6px;border-radius:3px;font-size:9px">WALK-IN</span></div></div>';
-setTimeout(()=>{new QRCode(document.getElementById('qr-w-'+id),{text:'EVT:'+id+':'+name+':'+email,width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},50);
+setTimeout(()=>{new QRCode(document.getElementById('qr-w-'+id),{text:'EVT|'+id+'|'+name+'|'+email+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},50);
 document.getElementById('walkinBadgeResult').classList.remove('hidden');
 ['walkinName','walkinEmail','walkinPhone','walkinCompany'].forEach(x=>document.getElementById(x).value='');renderWalkinStats();}
 function closeWalkinResult(){document.getElementById('walkinBadgeResult').classList.add('hidden');document.getElementById('walkinName').focus();}
@@ -498,7 +531,7 @@ document.getElementById('walkinList').innerHTML=w.slice().reverse().map(a=>'<div
 
 // ═══════ MANUAL ENTRY ═══════
 function toggleManualEntry(){document.getElementById('manualEntryForm').classList.toggle('hidden');}
-function submitManualEntry(){const stand=document.getElementById('scannerStandSelect').value;if(!stand){showScanResult('error',t('select_stand_first'));return;}
+function submitManualEntry(){const stand=document.getElementById('scannerStandSelect').value.trim();if(!stand){showScanResult('error',t('select_stand_first'));return;}
 const name=document.getElementById('manualName').value.trim(),email=document.getElementById('manualEmail').value.trim(),phone=document.getElementById('manualPhone').value.trim();
 if(!name||!email){showScanResult('error',t('enter_name_email'));return;}
 let att=state.attendees.find(a=>a.email.toLowerCase()===email.toLowerCase());
@@ -532,11 +565,41 @@ function exportCSV(){if(!state.scans.length){alert(t('no_scans'));return;}
 let csv='Timestamp,ID,Name,Email,Phone,Company,Stand,Tags,Comments\n';state.scans.forEach(s=>{csv+='"'+s.timestamp+'","'+s.attendeeId+'","'+s.attendeeName+'","'+s.attendeeEmail+'","'+(s.attendeePhone||'')+'","'+(s.attendeeCompany||'')+'","'+s.stand+'","'+(s.tags||'')+'","'+(s.comments||'').replace(/"/g,'""')+'"\n';});
 const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=(state.eventName||'event')+'_scans.csv';a.click();URL.revokeObjectURL(url);}
 
+// ═══════ URL PARAMS (stands shared via link) ═══════
+let urlStands = [];
+let urlSheetUrl = '';
+let isSupplierMode = false;
+
+function parseUrlParams(){
+  const params = new URLSearchParams(window.location.search);
+  const s = params.get('stands');
+  if(s){ urlStands = s.split(',').map(x=>decodeURIComponent(x.trim())).filter(Boolean); isSupplierMode = true; }
+  const sh = params.get('sheet');
+  if(sh) urlSheetUrl = decodeURIComponent(sh);
+  // If sheet URL from URL but not in state, use it
+  if(urlSheetUrl && !state.sheetUrl) state.sheetUrl = urlSheetUrl;
+}
+
+function generateSupplierLink(){
+  const base = window.location.origin + window.location.pathname;
+  const standsParam = state.stands.map(s=>encodeURIComponent(s)).join(',');
+  let url = base + '?stands=' + standsParam;
+  if(state.sheetUrl) url += '&sheet=' + encodeURIComponent(state.sheetUrl);
+  document.getElementById('supplierLinkUrl').value = url;
+  document.getElementById('supplierLinkResult').classList.remove('hidden');
+  if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>{});}
+}
+
 // ═══════ INIT ═══════
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('newStand').addEventListener('keydown',e=>{if(e.key==='Enter')addStand()});
-  loadState();applyLang();
+  loadState();
+  parseUrlParams();
+  applyLang();
+  populateStandSelectors();
   const ss=localStorage.getItem('selStand');if(ss){const sel=document.getElementById('scannerStandSelect');if(sel){for(const o of sel.options)if(o.value===ss)o.selected=true;}}
+  // If opened with stands in URL, go directly to scanner
+  if(isSupplierMode) showView('scanner');
 });
 </script>
 </body>
