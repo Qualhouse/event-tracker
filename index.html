@@ -524,7 +524,14 @@ function showSetupStep(n){for(let i=1;i<=4;i++){document.getElementById('setup-s
 async function completeStep1(){
   const configText=document.getElementById('firebaseConfig').value.trim();
   let config;
-  try{config=JSON.parse(configText);}catch(e){document.getElementById('firebaseStatus').innerHTML='<span style="color:var(--red)">JSON inválido</span>';return;}
+  // Accept both JS object format (unquoted keys) and strict JSON
+  try{config=JSON.parse(configText);}catch(e){
+    try{
+      // Firebase gives JS format with unquoted keys - fix by adding quotes
+      const fixed=configText.replace(/([{,]\s*)(\w+)\s*:/g,'$1"$2":').replace(/,\s*}/g,'}');
+      config=JSON.parse(fixed);
+    }catch(e2){document.getElementById('firebaseStatus').innerHTML='<span style="color:var(--red)">JSON inválido — verifique o formato</span>';return;}
+  }
   if(!initFirebase(config)){document.getElementById('firebaseStatus').innerHTML='<span style="color:var(--red)">'+t('firebase_fail')+'</span>';return;}
   document.getElementById('firebaseStatus').innerHTML='<span style="color:var(--green)">'+t('firebase_ok')+'</span>';
   localStorage.setItem('qh_firebaseConfig',JSON.stringify(config));
