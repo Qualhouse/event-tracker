@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
@@ -202,7 +203,7 @@ label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-
   <div class="card hidden" id="setup-step2">
     <div class="card-title" data-i18n="import_attendees"></div>
     <p style="font-size:12px;color:var(--text-dim);margin-bottom:14px" data-i18n="import_desc"></p>
-    <input type="file" id="csvFile" accept=".csv" onchange="handleCSV(event)" style="margin-bottom:10px">
+    <input type="file" id="csvFile" accept=".csv,.xlsx,.xls" onchange="handleCSV(event)" style="margin-bottom:10px">
     <div id="csvPreview" class="hidden"><p style="font-size:12px;color:var(--green);margin-bottom:6px" id="csvCount"></p><div style="max-height:180px;overflow:auto;border:1px solid var(--border);border-radius:var(--radius-sm)"><table class="data-table" id="csvPreviewTable"></table></div></div>
     <div style="margin-top:14px"><button class="btn btn-primary" id="step2Btn" onclick="completeStep2()" disabled data-i18n="continue"></button></div>
   </div>
@@ -240,6 +241,15 @@ label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-
   <div class="scanner-container">
     <h1 style="text-align:center" data-i18n="walkin_title"></h1>
     <p class="subtitle" style="text-align:center" data-i18n="walkin_sub"></p>
+
+    <!-- Pending guests from import -->
+    <div class="card" style="width:100%;max-width:480px" id="pendingGuestsCard">
+      <div class="card-title">⏳ <span data-i18n="pending_guests"></span> <span id="pendingCount" style="color:var(--orange)"></span></div>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px" data-i18n="pending_guests_desc"></p>
+      <div id="pendingGuestsList"></div>
+    </div>
+
+    <!-- Walk-in form -->
     <div class="card" style="width:100%;max-width:420px">
       <div class="card-title" data-i18n="new_walkin"></div>
       <div style="margin-bottom:10px"><label data-i18n="full_name"></label><input type="text" id="walkinName"></div>
@@ -346,6 +356,8 @@ const LANG={pt:{
   walkin_title:'Registo Walk-in',walkin_sub:'Visitantes sem inscrição prévia.',new_walkin:'Novo Visitante',
   full_name:'Nome Completo *',phone:'Telefone *',company_optional:'Empresa (opcional)',
   register_badge:'Registar e Gerar Crachá',registered_ok:'✓ Registado',print_badge:'🖨 Imprimir',register_another:'Registar Outro',
+  pending_guests:'Acompanhantes por identificar',pending_guests_desc:'Estes bilhetes foram comprados por outra pessoa. Preencha os dados do acompanhante quando chegar ao evento.',
+  guest_of:'Acompanhante de',complete_info:'Completar',complete_guest:'Identificar Acompanhante',
   scan_title:'Ler Crachá',your_stand:'O seu Stand',select_stand:'— Selecione o seu stand —',
   no_badge_manual:'✏️ Sem crachá? Inserir manualmente',log_visit:'Registar Visita',cancel:'Cancelar',recent_scans:'Leituras Recentes',
   badges_title:'Crachás',badges_sub:'Imprima crachás com QR.',
@@ -376,6 +388,8 @@ const LANG={pt:{
   walkin_title:'Walk-in Registration',walkin_sub:'Visitors without prior registration.',new_walkin:'New Visitor',
   full_name:'Full Name *',phone:'Phone *',company_optional:'Company (optional)',
   register_badge:'Register & Badge',registered_ok:'✓ Registered',print_badge:'🖨 Print',register_another:'Register Another',
+  pending_guests:'Guests to identify',pending_guests_desc:'These tickets were bought by someone else. Fill in the guest details when they arrive.',
+  guest_of:'Guest of',complete_info:'Complete',complete_guest:'Identify Guest',
   scan_title:'Scan Badge',your_stand:'Your Stand',select_stand:'— Select your stand —',
   no_badge_manual:'✏️ No badge? Enter manually',log_visit:'Log Visit',cancel:'Cancel',recent_scans:'Recent Scans',
   badges_title:'Badges',badges_sub:'Print badges with QR codes.',
@@ -513,6 +527,7 @@ function showView(name){
   if(name==='scanner')startScanner();
   if(name==='badges')renderBadges();
   if(name==='dashboard')renderDashboard();
+  if(name==='checkin')renderPendingGuests();
 }
 
 // ═══════════════════════════════════════════
@@ -544,22 +559,82 @@ async function completeStep1(){
 }
 
 let csvAttendees=[];
-function handleCSV(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=function(ev){const rows=parseCSV(ev.target.result);if(rows.length<2)return;const h=rows[0].map(x=>x.toLowerCase().trim());
-const fi=h.findIndex(x=>x.includes('first name')||x==='first');const li=h.findIndex(x=>x.includes('last name')||x==='last');
-const ni=h.findIndex(x=>x==='name'||x.includes('attendee name'));const ei=h.findIndex(x=>x.includes('email'));
-const pi=h.findIndex(x=>x.includes('phone')||x.includes('telefone')||x.includes('telemóvel'));
-const ci=h.findIndex(x=>x.includes('company')||x.includes('empresa')||x.includes('organization'));
-csvAttendees=[];
-for(let i=1;i<rows.length;i++){const r2=rows[i];if(!r2||r2.length<2)continue;
-let name='';if(ni>=0)name=r2[ni]||'';else if(fi>=0&&li>=0)name=((r2[fi]||'')+' '+(r2[li]||'')).trim();else if(fi>=0)name=r2[fi]||'';
-const email=ei>=0?(r2[ei]||''):'';const phone=pi>=0?(r2[pi]||''):'';const company=ci>=0?(r2[ci]||''):'';
-if(!name&&!email)continue;
-csvAttendees.push({id:'A'+String(i).padStart(4,'0'),name:name.trim(),email:email.trim(),phone:phone.trim(),company:company.trim()});}
-document.getElementById('csvCount').textContent='✓ '+csvAttendees.length+' participantes';
-const tbl=document.getElementById('csvPreviewTable');let html='<thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Tel</th><th>Empresa</th></tr></thead><tbody>';
-csvAttendees.slice(0,5).forEach(a=>{html+='<tr><td class="mono">'+a.id+'</td><td>'+a.name+'</td><td>'+a.email+'</td><td>'+a.phone+'</td><td>'+a.company+'</td></tr>';});
-if(csvAttendees.length>5)html+='<tr><td colspan="5" style="color:var(--text-muted)">+ '+(csvAttendees.length-5)+' mais</td></tr>';
-html+='</tbody>';tbl.innerHTML=html;document.getElementById('csvPreview').classList.remove('hidden');document.getElementById('step2Btn').disabled=false;};r.readAsText(file);}
+function handleCSV(e){
+  const file=e.target.files[0];if(!file)return;
+  const isXlsx=file.name.toLowerCase().match(/\.xlsx?$/);
+  const r=new FileReader();
+  r.onload=function(ev){
+    let rows;
+    if(isXlsx){
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    }else{
+      rows=parseCSV(ev.target.result);
+    }
+    if(rows.length<2)return;
+    const h=rows[0].map(x=>String(x).toLowerCase().trim());
+    // Support both English (Eventbrite EN) and Portuguese (Eventbrite PT) column names
+    const fi=h.findIndex(x=>x.includes('first name')||x==='first'||x.includes('nome do participante')||x==='nome');
+    const li=h.findIndex(x=>x.includes('last name')||x==='last'||x.includes('sobrenome do participante')||x==='sobrenome'||x==='apelido');
+    const ni=h.findIndex(x=>x==='name'||x.includes('attendee name'));
+    const ei=h.findIndex(x=>x.includes('email')||x.includes('e-mail do participante')||x.includes('e-mail'));
+    const pi=h.findIndex(x=>x.includes('phone')||x.includes('telefone')||x.includes('telemóvel')||x.includes('número de telefone'));
+    const ci=h.findIndex(x=>x.includes('company')||x.includes('empresa')||x.includes('organization')||x.includes('organização'));
+    const seen={};
+    csvAttendees=[];
+    let pendingCount=0;
+    for(let i=1;i<rows.length;i++){
+      const r2=rows[i];if(!r2||r2.length<2)continue;
+      let name='';
+      if(ni>=0)name=String(r2[ni]||'');
+      else if(fi>=0&&li>=0)name=(String(r2[fi]||'')+' '+String(r2[li]||'')).trim();
+      else if(fi>=0)name=String(r2[fi]||'');
+      const email=ei>=0?String(r2[ei]||'').trim().toLowerCase():'';
+      let phone=pi>=0?String(r2[pi]||'').trim():'';
+      if(phone==='nan'||phone==='NaN')phone='';
+      if(phone.match(/^\d+\.0$/))phone=phone.replace('.0','');
+      const company=ci>=0?String(r2[ci]||'').trim():'';
+      if(!name&&!email)continue;
+      // Duplicate email = extra ticket (companion/guest)
+      if(email&&seen[email]){
+        seen[email]++;
+        pendingCount++;
+        const guestNum=seen[email];
+        csvAttendees.push({
+          id:'A'+String(csvAttendees.length+1).padStart(4,'0'),
+          name:'',email:'',phone:'',company:'',
+          pending:true,
+          boughtBy:name.trim(),
+          boughtByEmail:email,
+          guestNum:guestNum
+        });
+        continue;
+      }
+      if(email)seen[email]=1;
+      csvAttendees.push({id:'A'+String(csvAttendees.length+1).padStart(4,'0'),name:name.trim(),email:email,phone:phone,company:company});
+    }
+    let statusHtml='✓ '+csvAttendees.length+' registos';
+    if(pendingCount>0) statusHtml+=' <span style="color:var(--orange)">('+pendingCount+' acompanhantes por identificar)</span>';
+    document.getElementById('csvCount').innerHTML=statusHtml;
+    const tbl=document.getElementById('csvPreviewTable');
+    let html='<thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Tel</th><th>Estado</th></tr></thead><tbody>';
+    csvAttendees.slice(0,8).forEach(a=>{
+      if(a.pending){
+        html+='<tr style="color:var(--orange)"><td class="mono">'+a.id+'</td><td>👤 Acompanhante de '+a.boughtBy+'</td><td>—</td><td>—</td><td>⏳ Pendente</td></tr>';
+      }else{
+        html+='<tr><td class="mono">'+a.id+'</td><td>'+a.name+'</td><td>'+a.email+'</td><td>'+a.phone+'</td><td style="color:var(--green)">✓</td></tr>';
+      }
+    });
+    if(csvAttendees.length>8)html+='<tr><td colspan="5" style="color:var(--text-muted)">+ '+(csvAttendees.length-8)+' mais</td></tr>';
+    html+='</tbody>';
+    tbl.innerHTML=html;
+    document.getElementById('csvPreview').classList.remove('hidden');
+    document.getElementById('step2Btn').disabled=false;
+  };
+  if(isXlsx)r.readAsArrayBuffer(file);
+  else r.readAsText(file);
+}
 
 function parseCSV(text){const rows=[];let row=[],cell='',inQ=false;for(let i=0;i<text.length;i++){const c=text[i];if(inQ){if(c==='"'&&text[i+1]==='"'){cell+='"';i++}else if(c==='"')inQ=false;else cell+=c}else{if(c==='"')inQ=true;else if(c===','){row.push(cell);cell=''}else if(c==='\n'||(c==='\r'&&text[i+1]==='\n')){row.push(cell);cell='';rows.push(row);row=[];if(c==='\r')i++}else cell+=c}}if(cell||row.length){row.push(cell);rows.push(row)}return rows}
 
@@ -714,6 +789,58 @@ async function registerWalkin(){
 }
 function closeWalkinResult(){document.getElementById('walkinBadgeResult').classList.add('hidden');document.getElementById('walkinName').focus();}
 
+// PENDING GUESTS
+function renderPendingGuests(){
+  const pending=attendees.filter(a=>a.pending);
+  const card=document.getElementById('pendingGuestsCard');
+  if(!pending.length){card.classList.add('hidden');return;}
+  card.classList.remove('hidden');
+  document.getElementById('pendingCount').textContent='('+pending.length+')';
+  const list=document.getElementById('pendingGuestsList');
+  list.innerHTML=pending.map(a=>
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px">'+
+    '<div><span style="color:var(--orange);font-size:12px">⏳ '+t('guest_of')+' '+a.boughtBy+'</span><br><span class="mono">'+a.id+'</span></div>'+
+    '<button class="btn btn-primary" style="padding:6px 14px;font-size:11px" onclick="showCompleteGuestForm(\''+a.id+'\')">'+t('complete_info')+'</button></div>'
+  ).join('');
+}
+
+function showCompleteGuestForm(id){
+  const att=attendees.find(a=>a.id===id);
+  if(!att)return;
+  const modal=document.getElementById('commentModal');
+  modal.className='modal-overlay';
+  modal.innerHTML='<div class="modal"><h2>'+t('complete_guest')+'</h2>'+
+    '<div class="modal-sub">'+t('guest_of')+' '+att.boughtBy+' ('+att.boughtByEmail+')</div>'+
+    '<div style="margin-bottom:10px"><label data-i18n="full_name">'+t('full_name')+'</label><input type="text" id="guestName" placeholder=""></div>'+
+    '<div style="margin-bottom:10px"><label>Email</label><input type="email" id="guestEmail" placeholder=""></div>'+
+    '<div style="margin-bottom:10px"><label data-i18n="phone">'+t('phone')+'</label><input type="tel" id="guestPhone" placeholder=""></div>'+
+    '<div style="margin-bottom:14px"><label>'+t('company_optional')+'</label><input type="text" id="guestCompany" placeholder=""></div>'+
+    '<div style="display:flex;gap:6px"><button class="btn btn-success" style="flex:1" onclick="completeGuest(\''+id+'\')">'+t('register_badge')+'</button>'+
+    '<button class="btn btn-secondary" onclick="document.getElementById(\'commentModal\').className=\'hidden\'">'+t('cancel')+'</button></div></div>';
+}
+
+async function completeGuest(id){
+  const name=document.getElementById('guestName').value.trim();
+  const email=document.getElementById('guestEmail').value.trim();
+  const phone=document.getElementById('guestPhone').value.trim();
+  const company=document.getElementById('guestCompany').value.trim();
+  if(!name){alert(t('enter_name_email'));return;}
+  // Update in Firebase
+  const att=attendees.find(a=>a.id===id);
+  const updated={...att,name,email:email||att.boughtByEmail,phone,company,pending:false,completedAt:new Date().toISOString()};
+  delete updated.boughtBy;delete updated.boughtByEmail;delete updated.guestNum;
+  await addAttendee(updated);
+  document.getElementById('commentModal').className='hidden';
+  // Show badge for printing
+  const bc=document.getElementById('walkinBadgeCard');
+  bc.innerHTML='<div class="badge-header"><img src="data:image/png;base64,'+BADGE_LOGO+'" alt="QH" style="height:20px;margin-bottom:2px"><div style="font-size:9px;color:#999">'+(eventData?eventData.name:'')+'</div></div>'+
+  '<div class="badge-body"><div class="badge-name">'+name+'</div><div class="badge-detail">'+(email||'')+'</div>'+(phone?'<div class="badge-detail">'+phone+'</div>':'')+(company?'<div class="badge-detail">'+company+'</div>':'')+
+  '<div class="qr-container" id="qr-g-'+id+'"></div><div class="badge-id">'+id+'</div></div>';
+  setTimeout(()=>{new QRCode(document.getElementById('qr-g-'+id),{text:'EVT|'+id+'|'+name+'|'+(email||'')+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},50);
+  document.getElementById('walkinBadgeResult').classList.remove('hidden');
+  renderPendingGuests();
+}
+
 // MANUAL ENTRY
 function toggleManualEntry(){document.getElementById('manualEntryForm').classList.toggle('hidden');}
 async function submitManualEntry(){
@@ -737,8 +864,11 @@ async function submitManualEntry(){
 // BADGES
 // ═══════════════════════════════════════════
 function renderBadges(){const grid=document.getElementById('badgesGrid');grid.innerHTML='';
-if(!attendees.length){grid.innerHTML='<p style="color:var(--text-dim)">'+t('no_data')+'</p>';return;}
-attendees.forEach(a=>{const card=document.createElement('div');card.className='badge-card';
+const printable=attendees.filter(a=>!a.pending);
+const pending=attendees.filter(a=>a.pending);
+if(!printable.length&&!pending.length){grid.innerHTML='<p style="color:var(--text-dim)">'+t('no_data')+'</p>';return;}
+if(pending.length){grid.innerHTML='<p style="color:var(--orange);font-size:13px;margin-bottom:14px">⏳ '+pending.length+' '+t('pending_guests').toLowerCase()+' — '+t('pending_guests_desc').toLowerCase()+'</p>';}
+printable.forEach(a=>{const card=document.createElement('div');card.className='badge-card';
 card.innerHTML='<div class="badge-header"><img src="data:image/png;base64,'+BADGE_LOGO+'" alt="QH" style="height:22px;margin-bottom:2px"><div style="font-size:9px;color:#999">'+(eventData?eventData.name:'')+'</div></div>'+
 '<div class="badge-body"><div class="badge-name">'+a.name+'</div><div class="badge-detail">'+a.email+'</div>'+(a.phone?'<div class="badge-detail">'+a.phone+'</div>':'')+(a.company?'<div class="badge-detail" style="font-weight:500">'+a.company+'</div>':'')+
 '<div class="qr-container" id="qr-'+a.id+'"></div><div class="badge-id">'+a.id+'</div></div>';
