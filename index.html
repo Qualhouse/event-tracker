@@ -752,15 +752,29 @@ async function registerWalkin(){
   const id='W'+String(attendees.filter(a=>a.id.startsWith('W')).length+1).padStart(4,'0');
   const att={id,name,email,phone,company,walkin:true,createdAt:new Date().toISOString()};
   await addAttendee(att);
-  // Show badge
-  const bc=document.getElementById('walkinBadgeCard');
-  bc.innerHTML='<div class="badge-left"><div class="qr-container" id="qr-w-'+id+'"></div></div>'+
-  '<div class="badge-right"><div class="badge-top"><img src="data:image/png;base64,'+BADGE_LOGO_DARK+'" alt="QH" class="badge-logo"><span class="badge-event">'+(eventData?eventData.name:'')+'</span></div>'+
-  '<div class="badge-name">'+name+'</div>'+(company?'<div class="badge-company">'+company+'</div>':'')+
-  '<div class="badge-detail">'+email+'</div>'+(phone?'<div class="badge-detail">'+phone+'</div>':'')+
-  '<div class="badge-id">'+id+' <span style="background:#e28a32;color:#fff;padding:1px 6px;border-radius:3px;font-size:8px">WALK-IN</span></div></div>';
-  setTimeout(()=>{new QRCode(document.getElementById('qr-w-'+id),{text:'EVT|'+id+'|'+name+'|'+email+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},50);
-  document.getElementById('walkinBadgeResult').classList.remove('hidden');
+  // Show badge in modal
+  const modal=document.getElementById('commentModal');
+  modal.className='modal-overlay';
+  modal.innerHTML='<div class="modal" style="text-align:center">'+
+    '<div style="color:var(--green);font-weight:700;font-size:16px;margin-bottom:12px">✓ '+t('registered_ok')+'</div>'+
+    '<div class="badge-card" style="margin:0 auto;max-width:300px;text-align:center" id="walkinBadgeModal">'+
+      '<div class="badge-right">'+
+        '<div class="badge-top"><img src="data:image/png;base64,'+BADGE_LOGO_DARK+'" alt="" class="badge-logo"><span class="badge-event">'+(eventData?eventData.name:'')+'</span></div>'+
+        '<div class="badge-name">'+name+'</div>'+
+        (company?'<div class="badge-company">'+company+'</div>':'')+
+      '</div>'+
+      '<div class="badge-left"><div class="qr-container" id="qr-w-'+id+'"></div></div>'+
+      '<div class="badge-right" style="border:none;padding-top:0">'+
+        '<div class="badge-detail">'+email+'</div>'+
+        (phone?'<div class="badge-detail">'+phone+'</div>':'')+
+        '<div class="badge-id">'+id+' <span style="background:#e28a32;color:#fff;padding:1px 6px;border-radius:3px;font-size:8px">WALK-IN</span></div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px">'+
+      '<button class="btn btn-primary" onclick="printSingleBadgeFromEl(\'walkinBadgeModal\')">🖨 '+t('print_badge')+'</button>'+
+      '<button class="btn btn-secondary" onclick="document.getElementById(\'commentModal\').className=\'hidden\'">'+t('register_another')+'</button>'+
+    '</div></div>';
+  setTimeout(()=>{new QRCode(document.getElementById('qr-w-'+id),{text:'EVT|'+id+'|'+name+'|'+email+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},100);
   ['walkinName','walkinEmail','walkinPhone','walkinCompany'].forEach(x=>document.getElementById(x).value='');
 }
 function closeWalkinResult(){document.getElementById('walkinBadgeResult').classList.add('hidden');document.getElementById('walkinName').focus();}
@@ -809,22 +823,32 @@ async function completeGuest(id){
   const phone=document.getElementById('guestPhone').value.trim();
   const company=document.getElementById('guestCompany').value.trim();
   if(!name){alert(t('enter_name_email'));return;}
-  // Update in Firebase
   const att=attendees.find(a=>a.id===id);
   const updated={...att,name,email:email||att.boughtByEmail,phone,company,pending:false,completedAt:new Date().toISOString()};
   delete updated.boughtBy;delete updated.boughtByEmail;delete updated.guestNum;
   await addAttendee(updated);
-  document.getElementById('commentModal').className='hidden';
-  // Show badge for printing
-  const bc=document.getElementById('walkinBadgeCard');
-  bc.innerHTML='<div class="badge-left"><div class="qr-container" id="qr-g-'+id+'"></div></div>'+
-  '<div class="badge-right"><div class="badge-top"><img src="data:image/png;base64,'+BADGE_LOGO_DARK+'" alt="QH" class="badge-logo"><span class="badge-event">'+(eventData?eventData.name:'')+'</span></div>'+
-  '<div class="badge-name">'+name+'</div>'+(company?'<div class="badge-company">'+company+'</div>':'')+
-  '<div class="badge-detail">'+(email||'')+'</div>'+(phone?'<div class="badge-detail">'+phone+'</div>':'')+
-  '<div class="badge-id">'+id+'</div></div>';
-  setTimeout(()=>{new QRCode(document.getElementById('qr-g-'+id),{text:'EVT|'+id+'|'+name+'|'+(email||'')+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},50);
-  document.getElementById('walkinBadgeResult').classList.remove('hidden');
-  renderPendingGuests();
+  // Show badge inside the modal
+  const modal=document.getElementById('commentModal');
+  modal.innerHTML='<div class="modal" style="text-align:center">'+
+    '<div style="color:var(--green);font-weight:700;font-size:16px;margin-bottom:12px">✓ '+t('registered_ok')+'</div>'+
+    '<div class="badge-card" style="margin:0 auto;max-width:300px;text-align:center" id="guestBadgeCard">'+
+      '<div class="badge-right">'+
+        '<div class="badge-top"><img src="data:image/png;base64,'+BADGE_LOGO_DARK+'" alt="" class="badge-logo"><span class="badge-event">'+(eventData?eventData.name:'')+'</span></div>'+
+        '<div class="badge-name">'+name+'</div>'+
+        (company?'<div class="badge-company">'+company+'</div>':'')+
+      '</div>'+
+      '<div class="badge-left"><div class="qr-container" id="qr-g-'+id+'"></div></div>'+
+      '<div class="badge-right" style="border:none;padding-top:0">'+
+        '<div class="badge-detail">'+(email||'')+'</div>'+
+        (phone?'<div class="badge-detail">'+phone+'</div>':'')+
+        '<div class="badge-id">'+id+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px">'+
+      '<button class="btn btn-primary" onclick="printSingleBadgeFromEl(\'guestBadgeCard\')">🖨 '+t('print_badge')+'</button>'+
+      '<button class="btn btn-secondary" onclick="document.getElementById(\'commentModal\').className=\'hidden\';renderPendingGuests()">'+t('cancel')+'</button>'+
+    '</div></div>';
+  setTimeout(()=>{new QRCode(document.getElementById('qr-g-'+id),{text:'EVT|'+id+'|'+name+'|'+(email||'')+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},100);
 }
 
 // MANUAL ENTRY
@@ -849,27 +873,26 @@ async function submitManualEntry(){
 // ═══════════════════════════════════════════
 // BADGES
 // ═══════════════════════════════════════════
-function printSingleBadge(){
-  // Clone the visible badge card and print only that one
-  const badge=document.getElementById('walkinBadgeCard');
+function printSingleBadge(){printSingleBadgeFromEl('walkinBadgeCard');}
+function printSingleBadgeFromEl(elId){
+  const badge=document.getElementById(elId);
   if(!badge)return;
-  const printWin=window.open('','_blank','width=600,height=400');
+  const printWin=window.open('','_blank','width=600,height=800');
   printWin.document.write('<html><head><title>Badge</title>');
   printWin.document.write('<style>');
   printWin.document.write('@page{size:4in 6in;margin:0}');
-  printWin.document.write('body{margin:0;padding:0;display:flex;align-items:center;justify-content:center;width:4in;height:6in;font-family:sans-serif}');
-  printWin.document.write('.badge-card{background:#fff;color:#000;width:4in;height:6in;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-left:6px solid #e28a32;box-sizing:border-box}');
-  printWin.document.write('.badge-left{padding:6mm 0}');
-  printWin.document.write('.badge-right{padding:4mm 8mm;text-align:center}');
-  printWin.document.write('.badge-top{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4mm;padding-bottom:3mm;border-bottom:1px solid #e0e0e0}');
-  printWin.document.write('.badge-name{font-size:24pt;font-weight:800;margin-bottom:2mm}');
-  printWin.document.write('.badge-company{font-size:13pt;color:#e28a32;font-weight:700;margin-bottom:2mm}');
-  printWin.document.write('.badge-detail{font-size:11pt;color:#444}');
-  printWin.document.write('.badge-logo{height:8mm}');
-  printWin.document.write('.badge-event{font-size:9pt;color:#999;text-transform:uppercase;letter-spacing:.5px}');
-  printWin.document.write('.badge-id{font-family:monospace;font-size:8pt;color:#bbb;margin-top:3mm}');
-  printWin.document.write('img[alt=""]{max-width:28mm;max-height:28mm}');
-  printWin.document.write('canvas{max-width:28mm!important;max-height:28mm!important}');
+  printWin.document.write('body{margin:0;padding:0;display:flex;align-items:center;justify-content:center;width:4in;height:6in;font-family:"DM Sans",sans-serif}');
+  printWin.document.write('.badge-card{background:#fff;color:#000;width:4in;height:6in;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-top:6px solid #e28a32;box-sizing:border-box;padding:8mm}');
+  printWin.document.write('.badge-left{padding:4mm 0}');
+  printWin.document.write('.badge-right{padding:2mm 8mm;text-align:center;width:100%}');
+  printWin.document.write('.badge-top{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:5mm;padding-bottom:4mm;border-bottom:1px solid #ddd}');
+  printWin.document.write('.badge-name{font-size:26pt;font-weight:800;margin-bottom:2mm}');
+  printWin.document.write('.badge-company{font-size:14pt;color:#e28a32;font-weight:700;margin-bottom:2mm}');
+  printWin.document.write('.badge-detail{font-size:11pt;color:#333}');
+  printWin.document.write('.badge-logo{height:10mm}');
+  printWin.document.write('.badge-event{font-size:10pt;color:#999;text-transform:uppercase;letter-spacing:.5px}');
+  printWin.document.write('.badge-id{font-family:monospace;font-size:9pt;color:#aaa;margin-top:4mm}');
+  printWin.document.write('canvas,img{max-width:32mm!important;max-height:32mm!important}');
   printWin.document.write('</style></head><body>');
   printWin.document.write(badge.outerHTML);
   printWin.document.write('</body></html>');
@@ -998,6 +1021,9 @@ document.addEventListener('DOMContentLoaded',async()=>{
         if(initFirebase(config)){
           const loaded=await loadEvent(urlEventId);
           if(loaded){
+            // Save config so supplier can refresh without losing connection
+            localStorage.setItem('qh_firebaseConfig',JSON.stringify(config));
+            localStorage.setItem('qh_eventId',urlEventId);
             document.getElementById('tabBar').style.display='none';
             listenAttendees();listenScans();
             populateStandSelectors();
@@ -1005,11 +1031,27 @@ document.addEventListener('DOMContentLoaded',async()=>{
           }
         }
       }catch(e){console.error(e);}
+    }else{
+      // Supplier refresh without URL params - try to reconnect from cache
+      const cachedConfig=localStorage.getItem('qh_firebaseConfig');
+      const cachedEid=localStorage.getItem('qh_eventId');
+      if(cachedConfig&&cachedEid){
+        try{
+          const config=JSON.parse(cachedConfig);
+          if(initFirebase(config)){
+            const loaded=await loadEvent(cachedEid);
+            if(loaded){
+              document.getElementById('tabBar').style.display='none';
+              listenAttendees();listenScans();
+              populateStandSelectors();
+              showView('scanner');
+            }
+          }
+        }catch(e){console.error(e);}
+      }
     }
   }else{
-    // Admin mode: no PIN, go straight to app
-    document.getElementById('pinScreen').classList.add('hidden');
-    document.getElementById('mainApp').classList.remove('hidden');
+    // Admin mode
     isAdmin=true;
     const savedConfig=localStorage.getItem('qh_firebaseConfig');
     const savedEid=localStorage.getItem('qh_eventId');
