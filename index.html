@@ -108,36 +108,40 @@ label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-
 .pin-error{color:var(--red);font-size:13px;min-height:20px}
 
 /* BADGES */
-.badges-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
-.badge-card{background:#fff;color:#000;border-radius:var(--radius);overflow:hidden;border-top:4px solid #e28a32;text-align:center}
-.badge-card .badge-header{padding:12px 16px 6px;background:#fafafa;border-bottom:1px solid #eee}
-.badge-card .badge-body{padding:8px 16px 14px}
-.badge-card .badge-name{font-size:16px;font-weight:700;color:#000;margin:4px 0 2px}
-.badge-card .badge-detail{font-size:11px;color:#666}
-.badge-card .badge-id{font-family:'JetBrains Mono',monospace;font-size:10px;color:#999;margin-top:4px}
+.badges-grid{display:grid;grid-template-columns:1fr;gap:16px;max-width:500px;margin:0 auto}
+.badge-card{background:#fff;color:#000;border-radius:var(--radius);overflow:hidden;border-left:6px solid #e28a32;display:flex;align-items:stretch;min-height:140px}
+.badge-card .badge-left{padding:16px;display:flex;align-items:center;justify-content:center;background:#fafafa;border-right:1px solid #eee;flex-shrink:0}
+.badge-card .badge-right{padding:14px 18px;display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0}
+.badge-card .badge-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.badge-card .badge-logo{height:20px}
+.badge-card .badge-event{font-size:9px;color:#999;text-transform:uppercase;letter-spacing:.3px}
+.badge-card .badge-name{font-size:18px;font-weight:700;color:#000;line-height:1.2;margin-bottom:2px}
+.badge-card .badge-detail{font-size:11px;color:#555;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge-card .badge-company{font-size:12px;color:#333;font-weight:600}
+.badge-card .badge-id{font-family:'JetBrains Mono',monospace;font-size:9px;color:#bbb;margin-top:auto;padding-top:6px}
+.badge-card .qr-container{padding:0;background:#fff}
+.badge-card .qr-container img,.badge-card .qr-container canvas{width:110px!important;height:110px!important}
 
-/* DASHBOARD */
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center}
-.stat-value{font-size:28px;font-weight:700;color:var(--accent)}
-.stat-label{font-size:11px;color:var(--text-dim);margin-top:2px}
-.data-table{width:100%;border-collapse:collapse;font-size:12px}
-.data-table th{text-align:left;padding:8px 12px;background:var(--surface-2);color:var(--text-dim);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
-.data-table td{padding:8px 12px;border-bottom:1px solid var(--border)}
-.data-table tr:hover td{background:var(--surface-2)}
-.mono{font-family:'JetBrains Mono',monospace;font-size:10px}
-.filter-bar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
-.filter-bar select,.filter-bar input{max-width:180px}
-.hidden{display:none!important}
-.config-section{background:var(--accent-glow);border:1px solid rgba(226,138,50,.3);border-radius:var(--radius);padding:16px;margin-bottom:16px}
-.comment-preview{font-size:11px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.visitor-history{margin-top:8px;padding:10px;background:var(--surface-2);border-radius:var(--radius-sm);font-size:11px;color:var(--text-dim)}
-.visitor-history strong{color:var(--text)}
-.loading{text-align:center;padding:40px;color:var(--text-dim)}
-.spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-@media print{body{background:#fff!important}.nav,.tab-bar,.view:not(#badgesView){display:none!important}#badgesView{display:block!important;padding:0!important}.badge-actions{display:none!important}.badges-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:0!important}.badge-card{border-radius:0!important;page-break-inside:avoid}}
+@media print{
+body{background:#fff!important;margin:0!important;padding:0!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+.nav,.tab-bar,.view:not(#badgesView){display:none!important}
+#badgesView{display:block!important;padding:0!important;margin:0!important;max-width:none!important}
+#badgesView>h1,#badgesView>p,#badgesView>.badge-actions,#badgesView>.subtitle{display:none!important}
+.badges-grid{display:block!important;max-width:none!important}
+.badge-card{border-radius:0!important;border:none!important;border-left:6px solid #e28a32!important;page-break-after:always!important;width:6in!important;height:4in!important;box-sizing:border-box!important;margin:0!important;display:flex!important}
+.badge-card .badge-left{padding:8mm!important;width:38mm!important;display:flex!important;align-items:center!important;justify-content:center!important}
+.badge-card .badge-right{padding:6mm 8mm!important}
+.badge-card .badge-name{font-size:22pt!important;margin-bottom:2mm!important}
+.badge-card .badge-company{font-size:12pt!important;margin-bottom:1mm!important}
+.badge-card .badge-detail{font-size:11pt!important}
+.badge-card .badge-logo{height:8mm!important}
+.badge-card .badge-event{font-size:9pt!important}
+.badge-card .badge-id{font-size:9pt!important}
+.badge-card .qr-container img,.badge-card .qr-container canvas{width:30mm!important;height:30mm!important}
+.badge-card .badge-top{margin-bottom:3mm!important}
+}
+@page{size:6in 4in;margin:0}
 @media(max-width:768px){h1{font-size:20px}.stats-row{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -780,9 +784,11 @@ async function registerWalkin(){
   await addAttendee(att);
   // Show badge
   const bc=document.getElementById('walkinBadgeCard');
-  bc.innerHTML='<div class="badge-header"><img src="data:image/png;base64,'+BADGE_LOGO+'" alt="QH" style="height:20px;margin-bottom:2px"><div style="font-size:9px;color:#999">'+(eventData?eventData.name:'')+'</div></div>'+
-  '<div class="badge-body"><div class="badge-name">'+name+'</div><div class="badge-detail">'+email+'</div>'+(phone?'<div class="badge-detail">'+phone+'</div>':'')+(company?'<div class="badge-detail">'+company+'</div>':'')+
-  '<div class="qr-container" id="qr-w-'+id+'"></div><div class="badge-id">'+id+' <span style="background:#e28a32;color:#fff;padding:1px 6px;border-radius:3px;font-size:9px">WALK-IN</span></div></div>';
+  bc.innerHTML='<div class="badge-left"><div class="qr-container" id="qr-w-'+id+'"></div></div>'+
+  '<div class="badge-right"><div class="badge-top"><img src="data:image/png;base64,'+BADGE_LOGO+'" alt="QH" class="badge-logo"><span class="badge-event">'+(eventData?eventData.name:'')+'</span></div>'+
+  '<div class="badge-name">'+name+'</div>'+(company?'<div class="badge-company">'+company+'</div>':'')+
+  '<div class="badge-detail">'+email+'</div>'+(phone?'<div class="badge-detail">'+phone+'</div>':'')+
+  '<div class="badge-id">'+id+' <span style="background:#e28a32;color:#fff;padding:1px 6px;border-radius:3px;font-size:8px">WALK-IN</span></div></div>';
   setTimeout(()=>{new QRCode(document.getElementById('qr-w-'+id),{text:'EVT|'+id+'|'+name+'|'+email+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},50);
   document.getElementById('walkinBadgeResult').classList.remove('hidden');
   ['walkinName','walkinEmail','walkinPhone','walkinCompany'].forEach(x=>document.getElementById(x).value='');
@@ -833,9 +839,11 @@ async function completeGuest(id){
   document.getElementById('commentModal').className='hidden';
   // Show badge for printing
   const bc=document.getElementById('walkinBadgeCard');
-  bc.innerHTML='<div class="badge-header"><img src="data:image/png;base64,'+BADGE_LOGO+'" alt="QH" style="height:20px;margin-bottom:2px"><div style="font-size:9px;color:#999">'+(eventData?eventData.name:'')+'</div></div>'+
-  '<div class="badge-body"><div class="badge-name">'+name+'</div><div class="badge-detail">'+(email||'')+'</div>'+(phone?'<div class="badge-detail">'+phone+'</div>':'')+(company?'<div class="badge-detail">'+company+'</div>':'')+
-  '<div class="qr-container" id="qr-g-'+id+'"></div><div class="badge-id">'+id+'</div></div>';
+  bc.innerHTML='<div class="badge-left"><div class="qr-container" id="qr-g-'+id+'"></div></div>'+
+  '<div class="badge-right"><div class="badge-top"><img src="data:image/png;base64,'+BADGE_LOGO+'" alt="QH" class="badge-logo"><span class="badge-event">'+(eventData?eventData.name:'')+'</span></div>'+
+  '<div class="badge-name">'+name+'</div>'+(company?'<div class="badge-company">'+company+'</div>':'')+
+  '<div class="badge-detail">'+(email||'')+'</div>'+(phone?'<div class="badge-detail">'+phone+'</div>':'')+
+  '<div class="badge-id">'+id+'</div></div>';
   setTimeout(()=>{new QRCode(document.getElementById('qr-g-'+id),{text:'EVT|'+id+'|'+name+'|'+(email||'')+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},50);
   document.getElementById('walkinBadgeResult').classList.remove('hidden');
   renderPendingGuests();
@@ -869,11 +877,15 @@ const pending=attendees.filter(a=>a.pending);
 if(!printable.length&&!pending.length){grid.innerHTML='<p style="color:var(--text-dim)">'+t('no_data')+'</p>';return;}
 if(pending.length){grid.innerHTML='<p style="color:var(--orange);font-size:13px;margin-bottom:14px">⏳ '+pending.length+' '+t('pending_guests').toLowerCase()+' — '+t('pending_guests_desc').toLowerCase()+'</p>';}
 printable.forEach(a=>{const card=document.createElement('div');card.className='badge-card';
-card.innerHTML='<div class="badge-header"><img src="data:image/png;base64,'+BADGE_LOGO+'" alt="QH" style="height:22px;margin-bottom:2px"><div style="font-size:9px;color:#999">'+(eventData?eventData.name:'')+'</div></div>'+
-'<div class="badge-body"><div class="badge-name">'+a.name+'</div><div class="badge-detail">'+a.email+'</div>'+(a.phone?'<div class="badge-detail">'+a.phone+'</div>':'')+(a.company?'<div class="badge-detail" style="font-weight:500">'+a.company+'</div>':'')+
-'<div class="qr-container" id="qr-'+a.id+'"></div><div class="badge-id">'+a.id+'</div></div>';
+card.innerHTML='<div class="badge-left"><div class="qr-container" id="qr-'+a.id+'"></div></div>'+
+'<div class="badge-right"><div class="badge-top"><img src="data:image/png;base64,'+BADGE_LOGO+'" alt="QH" class="badge-logo"><span class="badge-event">'+(eventData?eventData.name:'')+'</span></div>'+
+'<div class="badge-name">'+a.name+'</div>'+
+(a.company?'<div class="badge-company">'+a.company+'</div>':'')+
+'<div class="badge-detail">'+a.email+'</div>'+
+(a.phone?'<div class="badge-detail">'+a.phone+'</div>':'')+
+'<div class="badge-id">'+a.id+'</div></div>';
 grid.appendChild(card);
-setTimeout(()=>{new QRCode(document.getElementById('qr-'+a.id),{text:'EVT|'+a.id+'|'+a.name+'|'+a.email+'|'+(a.phone||'')+'|'+(a.company||''),width:130,height:130,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},10);});}
+setTimeout(()=>{new QRCode(document.getElementById('qr-'+a.id),{text:'EVT|'+a.id+'|'+a.name+'|'+a.email+'|'+(a.phone||'')+'|'+(a.company||''),width:140,height:140,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},10);});}
 
 // ═══════════════════════════════════════════
 // DASHBOARD
