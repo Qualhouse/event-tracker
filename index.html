@@ -131,20 +131,21 @@ body{background:#fff!important;margin:0!important;padding:0!important;-webkit-pr
 #badgesView>h1,#badgesView>p,#badgesView>.badge-actions,#badgesView>.subtitle{display:none!important}
 .badges-grid{display:block!important;max-width:none!important}
 .badges-grid>p{display:none!important}
-.badge-card{border-radius:0!important;box-shadow:none!important;page-break-after:always!important;width:6in!important;height:4in!important;box-sizing:border-box!important;margin:0!important;display:flex!important;padding:0!important;border:none!important}
-.badge-card::before{width:8px!important;border-radius:0!important;background:#e28a32!important}
-.badge-card .badge-left{padding:10mm!important;width:42mm!important;display:flex!important;align-items:center!important;justify-content:center!important}
-.badge-card .badge-right{padding:8mm 10mm 8mm 6mm!important;justify-content:center!important}
-.badge-card .badge-top{margin-bottom:4mm!important;padding-bottom:3mm!important}
-.badge-card .badge-name{font-size:24pt!important;margin-bottom:2mm!important;font-weight:800!important}
-.badge-card .badge-company{font-size:13pt!important;margin-bottom:2mm!important;color:#e28a32!important}
-.badge-card .badge-detail{font-size:11pt!important;color:#444!important}
-.badge-card .badge-logo{height:8mm!important}
-.badge-card .badge-event{font-size:9pt!important}
-.badge-card .badge-id{font-size:8pt!important;color:#bbb!important}
-.badge-card .qr-container img,.badge-card .qr-container canvas{width:28mm!important;height:28mm!important}
+.badge-card{border-radius:0!important;box-shadow:none!important;page-break-after:always!important;width:4in!important;height:6in!important;box-sizing:border-box!important;margin:0!important;padding:0!important;border:none!important;
+  display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important}
+.badge-card::before{display:none!important}
+.badge-card .badge-left{padding:6mm 0!important;width:auto!important;border-right:none!important;border-bottom:none!important;order:2}
+.badge-card .badge-right{padding:4mm 8mm!important;border-left:none!important;text-align:center!important;align-items:center!important;order:1;width:100%!important}
+.badge-card .badge-top{justify-content:center!important;margin-bottom:4mm!important;padding-bottom:3mm!important;border-bottom:1px solid #e0e0e0!important}
+.badge-card .badge-name{font-size:28pt!important;margin-bottom:2mm!important;font-weight:800!important;text-align:center!important}
+.badge-card .badge-company{font-size:14pt!important;margin-bottom:3mm!important;color:#e28a32!important;text-align:center!important}
+.badge-card .badge-detail{font-size:11pt!important;color:#444!important;text-align:center!important;white-space:normal!important}
+.badge-card .badge-logo{height:10mm!important}
+.badge-card .badge-event{font-size:10pt!important}
+.badge-card .badge-id{font-size:9pt!important;color:#bbb!important;text-align:center!important;padding-top:3mm!important}
+.badge-card .qr-container img,.badge-card .qr-container canvas{width:35mm!important;height:35mm!important}
 }
-@page{size:6in 4in;margin:0}
+@page{size:4in 6in;margin:0}
 @media(max-width:768px){h1{font-size:20px}.stats-row{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -249,14 +250,7 @@ body{background:#fff!important;margin:0!important;padding:0!important;-webkit-pr
     <h1 style="text-align:center" data-i18n="walkin_title"></h1>
     <p class="subtitle" style="text-align:center" data-i18n="walkin_sub"></p>
 
-    <!-- Pending guests from import -->
-    <div class="card" style="width:100%;max-width:480px" id="pendingGuestsCard">
-      <div class="card-title">⏳ <span data-i18n="pending_guests"></span> <span id="pendingCount" style="color:var(--orange)"></span></div>
-      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px" data-i18n="pending_guests_desc"></p>
-      <div id="pendingGuestsList"></div>
-    </div>
-
-    <!-- Walk-in form -->
+    <!-- Walk-in form FIRST -->
     <div class="card" style="width:100%;max-width:420px">
       <div class="card-title" data-i18n="new_walkin"></div>
       <div style="margin-bottom:10px"><label data-i18n="full_name"></label><input type="text" id="walkinName"></div>
@@ -274,6 +268,14 @@ body{background:#fff!important;margin:0!important;padding:0!important;-webkit-pr
           <button class="btn btn-secondary" onclick="closeWalkinResult()" data-i18n="register_another"></button>
         </div>
       </div>
+    </div>
+
+    <!-- Pending guests BELOW with search -->
+    <div class="card" style="width:100%;max-width:480px;margin-top:8px" id="pendingGuestsCard">
+      <div class="card-title">⏳ <span data-i18n="pending_guests"></span> <span id="pendingCount" style="color:var(--orange)"></span></div>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px" data-i18n="pending_guests_desc"></p>
+      <input type="text" id="pendingSearch" oninput="renderPendingGuests()" style="margin-bottom:10px;font-size:13px" data-i18n-ph="search_guest_ph">
+      <div id="pendingGuestsList" style="max-height:300px;overflow-y:auto"></div>
     </div>
   </div>
 </div>
@@ -368,7 +370,7 @@ const LANG={pt:{
   scan_title:'Ler Crachá',your_stand:'O seu Stand',select_stand:'— Selecione o seu stand —',
   no_badge_manual:'✏️ Sem crachá? Inserir manualmente',log_visit:'Registar Visita',cancel:'Cancelar',recent_scans:'Leituras Recentes',
   badges_title:'Crachás',badges_sub:'Imprima crachás com QR.',
-  dashboard_sub:'Dados em tempo real.',scan_log_title:'Registo de Leituras',all_stands:'Todos',search_ph:'Pesquisar...',
+  dashboard_sub:'Dados em tempo real.',scan_log_title:'Registo de Leituras',all_stands:'Todos',search_ph:'Pesquisar...',search_guest_ph:'Pesquisar por nome do comprador...',
   col_time:'Hora',col_attendee:'Visitante',col_phone:'Tel',col_company:'Empresa',col_comments:'Notas',
   visits_per_stand:'Visitas por Stand',
   cm_title:'Notas sobre a Visita',cm_sub_with_history:'Este visitante já passou por:',cm_sub:'Adicione comentários.',
@@ -400,7 +402,7 @@ const LANG={pt:{
   scan_title:'Scan Badge',your_stand:'Your Stand',select_stand:'— Select your stand —',
   no_badge_manual:'✏️ No badge? Enter manually',log_visit:'Log Visit',cancel:'Cancel',recent_scans:'Recent Scans',
   badges_title:'Badges',badges_sub:'Print badges with QR codes.',
-  dashboard_sub:'Real-time data.',scan_log_title:'Scan Log',all_stands:'All',search_ph:'Search...',
+  dashboard_sub:'Real-time data.',scan_log_title:'Scan Log',all_stands:'All',search_ph:'Search...',search_guest_ph:'Search by buyer name...',
   col_time:'Time',col_attendee:'Visitor',col_phone:'Phone',col_company:'Company',col_comments:'Notes',
   visits_per_stand:'Visits per Stand',
   cm_title:'Visit Notes',cm_sub_with_history:'This visitor already passed by:',cm_sub:'Add comments.',
@@ -491,15 +493,47 @@ async function addScan(scan){
 // ═══════════════════════════════════════════
 // PIN & AUTH
 // ═══════════════════════════════════════════
+async function adminLogin(savedConfig,savedEid,pin,correctPin){
+  if(pin!==correctPin){document.getElementById('pinError').textContent=t('pin_wrong');return;}
+  try{
+    const config=JSON.parse(savedConfig);
+    if(!initFirebase(config)){document.getElementById('pinError').textContent=t('firebase_fail');return;}
+    const loaded=await loadEvent(savedEid);
+    if(!loaded){document.getElementById('pinError').textContent='Event not found.';return;}
+    localStorage.setItem('qh_pin',pin);
+    document.getElementById('pinScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    isAdmin=true;
+    listenAttendees();listenScans();
+    stands=eventData.stands||[];
+    populateStandSelectors();
+    showSetupStep(4);
+    renderSetupSummary();
+    applyLang();
+  }catch(e){document.getElementById('pinError').textContent=t('firebase_fail');console.error(e);}
+}
+
 async function verifyPin(){
   const pin=document.getElementById('pinInput').value.trim();
   if(!pin){document.getElementById('pinError').textContent=t('pin_wrong');return;}
-  // Load event and check PIN
+
   const params=new URLSearchParams(window.location.search);
-  const eid=params.get('event');
-  if(!eid){document.getElementById('pinError').textContent='No event ID in URL.';return;}
-  
-  // Get firebase config from URL
+  const urlEventId=params.get('event');
+
+  if(!urlEventId){
+    // Admin mode — verify against saved PIN
+    const savedConfig=localStorage.getItem('qh_firebaseConfig');
+    const savedEid=localStorage.getItem('qh_eventId');
+    const savedPin=localStorage.getItem('qh_eventPin');
+    if(savedConfig&&savedEid&&savedPin){
+      await adminLogin(savedConfig,savedEid,pin,savedPin);
+    }else{
+      document.getElementById('pinError').textContent='No event configured.';
+    }
+    return;
+  }
+
+  // Supplier mode
   const fc=params.get('fc');
   if(!fc){document.getElementById('pinError').textContent='Missing config.';return;}
   try{
@@ -507,15 +541,17 @@ async function verifyPin(){
     if(!initFirebase(config)){document.getElementById('pinError').textContent=t('firebase_fail');return;}
   }catch(e){document.getElementById('pinError').textContent='Invalid config.';return;}
 
-  const loaded=await loadEvent(eid);
+  const loaded=await loadEvent(urlEventId);
   if(!loaded){document.getElementById('pinError').textContent='Event not found.';return;}
   if(eventData.pin!==pin){document.getElementById('pinError').textContent=t('pin_wrong');return;}
 
-  // Authenticated!
-  localStorage.setItem('qh_eventId',eid);
+  // Supplier authenticated
+  localStorage.setItem('qh_eventId',urlEventId);
   localStorage.setItem('qh_pin',pin);
   document.getElementById('pinScreen').classList.add('hidden');
   document.getElementById('mainApp').classList.remove('hidden');
+  // Hide all tabs — supplier only sees scanner
+  document.getElementById('tabBar').style.display='none';
   listenAttendees();
   listenScans();
   populateStandSelectors();
@@ -800,16 +836,24 @@ function closeWalkinResult(){document.getElementById('walkinBadgeResult').classL
 
 // PENDING GUESTS
 function renderPendingGuests(){
-  const pending=attendees.filter(a=>a.pending);
+  const allPending=attendees.filter(a=>a.pending);
   const card=document.getElementById('pendingGuestsCard');
-  if(!pending.length){card.classList.add('hidden');return;}
+  if(!allPending.length){card.classList.add('hidden');return;}
   card.classList.remove('hidden');
-  document.getElementById('pendingCount').textContent='('+pending.length+')';
+  document.getElementById('pendingCount').textContent='('+allPending.length+')';
+  // Filter by search
+  const searchEl=document.getElementById('pendingSearch');
+  const q=searchEl?searchEl.value.toLowerCase().trim():'';
+  const pending=q?allPending.filter(a=>(a.boughtBy||'').toLowerCase().includes(q)||(a.boughtByEmail||'').toLowerCase().includes(q)||a.id.toLowerCase().includes(q)):allPending;
   const list=document.getElementById('pendingGuestsList');
+  if(!pending.length&&q){
+    list.innerHTML='<p style="color:var(--text-muted);font-size:12px;text-align:center;padding:12px">'+t('no_data')+'</p>';
+    return;
+  }
   list.innerHTML=pending.map(a=>
     '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px">'+
-    '<div><span style="color:var(--orange);font-size:12px">⏳ '+t('guest_of')+' '+a.boughtBy+'</span><br><span class="mono">'+a.id+'</span></div>'+
-    '<button class="btn btn-primary" style="padding:6px 14px;font-size:11px" onclick="showCompleteGuestForm(\''+a.id+'\')">'+t('complete_info')+'</button></div>'
+    '<div style="min-width:0;flex:1"><span style="color:var(--orange);font-size:12px">⏳ '+t('guest_of')+' '+a.boughtBy+'</span><br><span style="font-size:10px;color:var(--text-muted)">'+a.boughtByEmail+'</span> <span class="mono">'+a.id+'</span></div>'+
+    '<button class="btn btn-primary" style="padding:6px 14px;font-size:11px;flex-shrink:0;margin-left:8px" onclick="showCompleteGuestForm(\''+a.id+'\')">'+t('complete_info')+'</button></div>'
   ).join('');
 }
 
@@ -949,7 +993,6 @@ document.addEventListener('DOMContentLoaded',async()=>{
   if(urlEventId){
     // Supplier mode: show PIN screen
     document.getElementById('pinScreen').classList.remove('hidden');
-    // Try auto-login if PIN is cached
     const cachedPin=localStorage.getItem('qh_pin');
     const cachedEid=localStorage.getItem('qh_eventId');
     if(cachedPin&&cachedEid===urlEventId){
@@ -957,32 +1000,30 @@ document.addEventListener('DOMContentLoaded',async()=>{
       verifyPin();
     }
   }else{
-    // Admin mode: show setup or resume
-    document.getElementById('mainApp').classList.remove('hidden');
-    isAdmin=true;
+    // Admin mode: check if event already configured
     const savedConfig=localStorage.getItem('qh_firebaseConfig');
     const savedEid=localStorage.getItem('qh_eventId');
-    if(savedConfig&&savedEid){
-      try{
-        const config=JSON.parse(savedConfig);
-        if(initFirebase(config)){
-          const loaded=await loadEvent(savedEid);
-          if(loaded){
-            listenAttendees();listenScans();
-            stands=eventData.stands||[];
-            populateStandSelectors();
-            showSetupStep(4);
-            renderSetupSummary();
-          }
-        }
-      }catch(e){console.error(e);}
+    const savedPin=localStorage.getItem('qh_eventPin');
+    if(savedConfig&&savedEid&&savedPin){
+      // Event exists — show PIN screen for admin too
+      document.getElementById('pinScreen').classList.remove('hidden');
+      isAdmin=true;
+      // Try auto-login with cached pin
+      const cachedPin=localStorage.getItem('qh_pin');
+      if(cachedPin){
+        document.getElementById('pinInput').value=cachedPin;
+        await adminLogin(savedConfig,savedEid,cachedPin,savedPin);
+      }
+    }else{
+      // First time setup — go straight to setup (no PIN yet)
+      document.getElementById('mainApp').classList.remove('hidden');
+      isAdmin=true;
+      if(localStorage.getItem('qh_firebaseConfig'))document.getElementById('firebaseConfig').value=localStorage.getItem('qh_firebaseConfig');
+      if(localStorage.getItem('qh_eventName'))document.getElementById('eventName').value=localStorage.getItem('qh_eventName');
+      if(localStorage.getItem('qh_eventDate'))document.getElementById('eventDate').value=localStorage.getItem('qh_eventDate');
+      if(localStorage.getItem('qh_eventPin'))document.getElementById('eventPin').value=localStorage.getItem('qh_eventPin');
+      if(localStorage.getItem('qh_sheetUrl'))document.getElementById('sheetUrl').value=localStorage.getItem('qh_sheetUrl');
     }
-    // Restore form values
-    if(localStorage.getItem('qh_firebaseConfig'))document.getElementById('firebaseConfig').value=localStorage.getItem('qh_firebaseConfig');
-    if(localStorage.getItem('qh_eventName'))document.getElementById('eventName').value=localStorage.getItem('qh_eventName');
-    if(localStorage.getItem('qh_eventDate'))document.getElementById('eventDate').value=localStorage.getItem('qh_eventDate');
-    if(localStorage.getItem('qh_eventPin'))document.getElementById('eventPin').value=localStorage.getItem('qh_eventPin');
-    if(localStorage.getItem('qh_sheetUrl'))document.getElementById('sheetUrl').value=localStorage.getItem('qh_sheetUrl');
   }
   // Restore selected stand
   const ss=localStorage.getItem('selStand');if(ss){const sel=document.getElementById('scannerStandSelect');if(sel){for(const o of sel.options)if(o.value===ss)o.selected=true;}}
