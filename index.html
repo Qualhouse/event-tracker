@@ -101,11 +101,7 @@ label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-
 .quick-tag.selected{background:var(--accent-glow);border-color:var(--accent);color:var(--accent)}
 
 /* PIN SCREEN */
-.pin-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:20px;text-align:center}
-.pin-screen img{height:48px;margin-bottom:8px}
-.pin-input{font-size:32px;text-align:center;letter-spacing:12px;max-width:200px;padding:16px;background:var(--surface-2);border:2px solid var(--border);border-radius:var(--radius)}
-.pin-input:focus{border-color:var(--accent)}
-.pin-error{color:var(--red);font-size:13px;min-height:20px}
+
 
 /* BADGES */
 .badges-grid{display:grid;grid-template-columns:1fr;gap:14px;max-width:560px;margin:0 auto}
@@ -151,21 +147,8 @@ body{background:#fff!important;margin:0!important;padding:0!important;-webkit-pr
 </head>
 <body>
 
-<!-- PIN SCREEN (shown first for suppliers) -->
-<div id="pinScreen" class="hidden">
-  <div class="pin-screen">
-    <img id="pinLogo" alt="Qualhouse">
-    <h1 data-i18n="pin_title"></h1>
-    <p style="color:var(--text-dim);font-size:13px;max-width:300px" data-i18n="pin_sub"></p>
-    <input type="password" class="pin-input" id="pinInput" maxlength="6" inputmode="numeric" placeholder="····">
-    <div class="pin-error" id="pinError"></div>
-    <button class="btn btn-primary btn-lg" onclick="verifyPin()" data-i18n="pin_enter"></button>
-    <button class="lang-btn" onclick="toggleLang()" id="pinLangBtn" style="margin-top:12px">EN</button>
-  </div>
-</div>
-
 <!-- MAIN APP (hidden until authenticated) -->
-<div id="mainApp" class="hidden">
+<div id="mainApp">
 <nav class="nav">
   <div class="nav-brand"><img id="navLogo" alt="Qualhouse"></div>
   <div class="nav-right-top">
@@ -201,7 +184,7 @@ body{background:#fff!important;margin:0!important;padding:0!important;-webkit-pr
       <div><label data-i18n="event_name"></label><input type="text" id="eventName" data-i18n-ph="event_name_ph"></div>
       <div><label data-i18n="event_date"></label><input type="text" id="eventDate" data-i18n-ph="event_date_ph"></div>
     </div>
-    <div style="margin-bottom:10px"><label>PIN <span style="color:var(--text-muted)">(4-6 dígitos)</span></label><input type="text" id="eventPin" placeholder="ex: 1234" maxlength="6" inputmode="numeric"></div>
+    
     <div style="margin-bottom:10px"><label>Google Sheets URL <span style="color:var(--text-muted)">(backup, opcional)</span></label><input type="text" id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec"></div>
     <button class="btn btn-primary" onclick="completeStep1()" data-i18n="continue"></button>
     <div id="firebaseStatus" style="margin-top:10px;font-size:12px"></div>
@@ -326,17 +309,27 @@ body{background:#fff!important;margin:0!important;padding:0!important;-webkit-pr
   <p class="subtitle" data-i18n="dashboard_sub"></p>
   <div class="stats-row" id="statsRow"></div>
   <div class="card">
-    <div class="card-title" data-i18n="scan_log_title"></div>
+    <div class="card-title" data-i18n="visits_per_stand"></div>
+    <div id="standChart"></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:0" data-i18n="scan_log_title"></div>
+      <button class="btn btn-secondary" style="padding:6px 14px;font-size:11px" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
     <div class="filter-bar">
       <select id="filterStand" onchange="renderDashboard()"><option value="" data-i18n="all_stands"></option></select>
       <input type="text" id="filterSearch" data-i18n-ph="search_ph" oninput="renderDashboard()">
-      <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
     </div>
     <div style="overflow-x:auto"><table class="data-table"><thead><tr>
       <th data-i18n="col_time"></th><th data-i18n="col_attendee"></th><th>Email</th><th data-i18n="col_phone"></th><th data-i18n="col_company"></th><th>Stand</th><th data-i18n="col_comments"></th>
     </tr></thead><tbody id="dashboardBody"></tbody></table></div>
   </div>
-  <div class="card" style="margin-top:14px"><div class="card-title" data-i18n="visits_per_stand"></div><div id="standChart"></div></div>
+  <div class="card" style="margin-top:14px">
+    <div class="card-title" data-i18n="matrix_title"></div>
+    <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px" data-i18n="matrix_sub"></p>
+    <div style="overflow-x:auto"><table class="data-table" id="matrixTable"></table></div>
+  </div>
 </div>
 </div><!-- end mainApp -->
 
@@ -377,10 +370,11 @@ const LANG={pt:{
   cm_tags_label:'Etiquetas Rápidas',cm_tag_interested:'Interessado em produtos',cm_tag_tried:'Experimentou produtos',
   cm_tag_callback:'Pede contacto',cm_tag_quotation:'Pediu orçamento',cm_tag_partner:'Possível parceiro',cm_tag_nointerest:'Sem interesse',
   cm_notes_label:'Notas',cm_notes_ph:'Produtos discutidos, observações...',cm_save:'Guardar',cm_skip:'Saltar',
-  total_scans:'Leituras',unique_visitors:'Visitantes',active_stands:'Stands',avg_visits:'Média',
+  total_scans:'Leituras',unique_visitors:'Visitantes',active_stands:'Stands',avg_visits:'Média/Pessoa',
+  registered:'Inscritos',conversion:'Conversão',matrix_title:'Matriz Visitante × Stand',matrix_sub:'Que visitantes passaram por que stands. Ordenado pelos mais ativos.',
   already_scanned:'já registado neste stand',unknown_badge:'QR não reconhecido',select_stand_first:'Selecione o seu stand!',
   enter_name_email:'Insira nome e email.',no_scans:'Sem dados.',no_data:'Sem dados.',
-  pin_title:'Acesso ao Evento',pin_sub:'Introduza o PIN fornecido pela organização.',pin_enter:'Entrar',pin_wrong:'PIN incorreto. Tente novamente.',
+  _pin_title:'Acesso ao Evento',pin_sub:'Introduza o PIN fornecido pela organização.',pin_enter:'Entrar',pin_wrong:'PIN incorreto. Tente novamente.',
   firebase_ok:'✓ Firebase conectado',firebase_fail:'✗ Erro na configuração do Firebase',uploading:'A carregar para Firebase...',uploaded:'Participantes carregados para Firebase'
 },en:{
   setup:'Setup',checkin:'Check-in',scanner:'Scanner',badges:'Badges',dashboard:'Dashboard',
@@ -409,10 +403,11 @@ const LANG={pt:{
   cm_tags_label:'Quick Tags',cm_tag_interested:'Interested in products',cm_tag_tried:'Tried products',
   cm_tag_callback:'Requests follow-up',cm_tag_quotation:'Requested quote',cm_tag_partner:'Potential partner',cm_tag_nointerest:'No interest',
   cm_notes_label:'Notes',cm_notes_ph:'Products discussed, observations...',cm_save:'Save',cm_skip:'Skip',
-  total_scans:'Scans',unique_visitors:'Visitors',active_stands:'Stands',avg_visits:'Avg',
+  total_scans:'Scans',unique_visitors:'Visitors',active_stands:'Stands',avg_visits:'Avg/Person',
+  registered:'Registered',conversion:'Conversion',matrix_title:'Visitor × Stand Matrix',matrix_sub:'Which visitors went to which stands. Sorted by most active.',
   already_scanned:'already scanned at this stand',unknown_badge:'Unrecognized QR',select_stand_first:'Select your stand first!',
   enter_name_email:'Enter name and email.',no_scans:'No data.',no_data:'No data yet.',
-  pin_title:'Event Access',pin_sub:'Enter the PIN provided by the organizer.',pin_enter:'Enter',pin_wrong:'Incorrect PIN. Try again.',
+  _pin_title:'Event Access',pin_sub:'Enter the PIN provided by the organizer.',pin_enter:'Enter',pin_wrong:'Incorrect PIN. Try again.',
   firebase_ok:'✓ Firebase connected',firebase_fail:'✗ Firebase configuration error',uploading:'Uploading to Firebase...',uploaded:'Attendees uploaded to Firebase'
 }};
 let curLang=localStorage.getItem('lang')||'pt';
@@ -448,9 +443,9 @@ async function loadEvent(eid){
   return false;
 }
 
-async function createEvent(name,date,pin,standsArr,sheetUrl,firebaseConfig){
+async function createEvent(name,date,standsArr,sheetUrl,firebaseConfig){
   eventId=name.toLowerCase().replace(/[^a-z0-9]/g,'').substring(0,20)+'_'+Date.now().toString(36);
-  eventData={name,date,pin,stands:standsArr,sheetUrl:sheetUrl||'',firebaseConfig,createdAt:new Date().toISOString()};
+  eventData={name,date,stands:standsArr,sheetUrl:sheetUrl||'',firebaseConfig,createdAt:new Date().toISOString()};
   await db.collection('events').doc(eventId).set(eventData);
   stands=standsArr;
   localStorage.setItem('qh_eventId',eventId);
@@ -493,71 +488,7 @@ async function addScan(scan){
 // ═══════════════════════════════════════════
 // PIN & AUTH
 // ═══════════════════════════════════════════
-async function adminLogin(savedConfig,savedEid,pin,correctPin){
-  if(pin!==correctPin){document.getElementById('pinError').textContent=t('pin_wrong');return;}
-  try{
-    const config=JSON.parse(savedConfig);
-    if(!initFirebase(config)){document.getElementById('pinError').textContent=t('firebase_fail');return;}
-    const loaded=await loadEvent(savedEid);
-    if(!loaded){document.getElementById('pinError').textContent='Event not found.';return;}
-    localStorage.setItem('qh_pin',pin);
-    document.getElementById('pinScreen').classList.add('hidden');
-    document.getElementById('mainApp').classList.remove('hidden');
-    isAdmin=true;
-    listenAttendees();listenScans();
-    stands=eventData.stands||[];
-    populateStandSelectors();
-    showSetupStep(4);
-    renderSetupSummary();
-    applyLang();
-  }catch(e){document.getElementById('pinError').textContent=t('firebase_fail');console.error(e);}
-}
 
-async function verifyPin(){
-  const pin=document.getElementById('pinInput').value.trim();
-  if(!pin){document.getElementById('pinError').textContent=t('pin_wrong');return;}
-
-  const params=new URLSearchParams(window.location.search);
-  const urlEventId=params.get('event');
-
-  if(!urlEventId){
-    // Admin mode — verify against saved PIN
-    const savedConfig=localStorage.getItem('qh_firebaseConfig');
-    const savedEid=localStorage.getItem('qh_eventId');
-    const savedPin=localStorage.getItem('qh_eventPin');
-    if(savedConfig&&savedEid&&savedPin){
-      await adminLogin(savedConfig,savedEid,pin,savedPin);
-    }else{
-      document.getElementById('pinError').textContent='No event configured.';
-    }
-    return;
-  }
-
-  // Supplier mode
-  const fc=params.get('fc');
-  if(!fc){document.getElementById('pinError').textContent='Missing config.';return;}
-  try{
-    const config=JSON.parse(decodeURIComponent(fc));
-    if(!initFirebase(config)){document.getElementById('pinError').textContent=t('firebase_fail');return;}
-  }catch(e){document.getElementById('pinError').textContent='Invalid config.';return;}
-
-  const loaded=await loadEvent(urlEventId);
-  if(!loaded){document.getElementById('pinError').textContent='Event not found.';return;}
-  if(eventData.pin!==pin){document.getElementById('pinError').textContent=t('pin_wrong');return;}
-
-  // Supplier authenticated
-  localStorage.setItem('qh_eventId',urlEventId);
-  localStorage.setItem('qh_pin',pin);
-  document.getElementById('pinScreen').classList.add('hidden');
-  document.getElementById('mainApp').classList.remove('hidden');
-  // Hide all tabs — supplier only sees scanner
-  document.getElementById('tabBar').style.display='none';
-  listenAttendees();
-  listenScans();
-  populateStandSelectors();
-  applyLang();
-  showView('scanner');
-}
 
 // ═══════════════════════════════════════════
 // NAV
@@ -595,7 +526,6 @@ async function completeStep1(){
   localStorage.setItem('qh_firebaseConfig',JSON.stringify(config));
   localStorage.setItem('qh_eventName',document.getElementById('eventName').value);
   localStorage.setItem('qh_eventDate',document.getElementById('eventDate').value);
-  localStorage.setItem('qh_eventPin',document.getElementById('eventPin').value);
   localStorage.setItem('qh_sheetUrl',document.getElementById('sheetUrl').value);
   isAdmin=true;
   showSetupStep(2);
@@ -705,11 +635,11 @@ async function completeStep3(){
   document.getElementById('step3Btn').textContent='...';
   const name=localStorage.getItem('qh_eventName')||'Evento';
   const date=localStorage.getItem('qh_eventDate')||'';
-  const pin=localStorage.getItem('qh_eventPin')||'1234';
+  
   const sheetUrl=localStorage.getItem('qh_sheetUrl')||'';
   const config=JSON.parse(localStorage.getItem('qh_firebaseConfig'));
 
-  const eid=await createEvent(name,date,pin,setupStands,sheetUrl,config);
+  const eid=await createEvent(name,date,setupStands,sheetUrl,config);
 
   // Now upload attendees to the real event
   for(const a of csvAttendees){
@@ -957,20 +887,60 @@ if(qrQueue.length) setTimeout(()=>processQrBatch(0),100);
 // DASHBOARD
 // ═══════════════════════════════════════════
 function renderDashboard(){
+  populateStandSelectors();
   const fs=document.getElementById('filterStand').value,fq=(document.getElementById('filterSearch').value||'').toLowerCase();
   let filtered=[...scans];if(fs)filtered=filtered.filter(s=>s.stand===fs);if(fq)filtered=filtered.filter(s=>(s.attendeeName||'').toLowerCase().includes(fq)||(s.attendeeEmail||'').toLowerCase().includes(fq));
   const uv=new Set(filtered.map(s=>s.attendeeId)).size,ts=filtered.length,sa=new Set(filtered.map(s=>s.stand)).size,av=uv?(ts/uv).toFixed(1):'0';
+  const totalAttendees=attendees.filter(a=>!a.pending).length;
+  const convRate=totalAttendees>0?Math.round((uv/totalAttendees)*100):0;
   document.getElementById('statsRow').innerHTML=[
+    '<div class="stat-card"><div class="stat-value">'+totalAttendees+'</div><div class="stat-label">'+t('registered')+'</div></div>',
     '<div class="stat-card"><div class="stat-value">'+ts+'</div><div class="stat-label">'+t('total_scans')+'</div></div>',
     '<div class="stat-card"><div class="stat-value">'+uv+'</div><div class="stat-label">'+t('unique_visitors')+'</div></div>',
     '<div class="stat-card"><div class="stat-value">'+sa+'</div><div class="stat-label">'+t('active_stands')+'</div></div>',
-    '<div class="stat-card"><div class="stat-value">'+av+'</div><div class="stat-label">'+t('avg_visits')+'</div></div>'
+    '<div class="stat-card"><div class="stat-value">'+av+'</div><div class="stat-label">'+t('avg_visits')+'</div></div>',
+    '<div class="stat-card"><div class="stat-value">'+convRate+'%</div><div class="stat-label">'+t('conversion')+'</div></div>'
   ].join('');
+
+  // Chart
+  const sc={};scans.forEach(s=>{sc[s.stand]=(sc[s.stand]||0)+1});const mx=Math.max(...Object.values(sc),1);
+  document.getElementById('standChart').innerHTML=Object.entries(sc).sort((a,b)=>b[1]-a[1]).map(([s,c])=>{
+    const pct=Math.round((c/mx)*100);
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+
+      '<div style="width:140px;font-size:11px;text-align:right;color:var(--text-dim);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+s+'">'+s+'</div>'+
+      '<div style="flex:1;height:28px;background:var(--surface-2);border-radius:6px;overflow:hidden;position:relative">'+
+        '<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--accent),#c47020);border-radius:6px;transition:width .5s"></div>'+
+        '<span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:700;color:var(--text)">'+c+'</span>'+
+      '</div></div>';
+  }).join('')||'<p style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px">'+t('no_data')+'</p>';
+
+  // Table
   document.getElementById('dashboardBody').innerHTML=filtered.map(s=>{
     const cm=(s.tags?s.tags:'')+(s.tags&&s.comments?' · ':'')+(s.comments||'');
-    return '<tr><td class="mono">'+new Date(s.timestamp).toLocaleString()+'</td><td>'+s.attendeeName+'</td><td>'+s.attendeeEmail+'</td><td>'+(s.attendeePhone||'')+'</td><td>'+(s.attendeeCompany||'')+'</td><td>'+s.stand+'</td><td><span class="comment-preview" title="'+cm.replace(/"/g,'&quot;')+'">'+(cm||'—')+'</span></td></tr>';}).join('');
-  const sc={};scans.forEach(s=>{sc[s.stand]=(sc[s.stand]||0)+1});const mx=Math.max(...Object.values(sc),1);
-  document.getElementById('standChart').innerHTML=Object.entries(sc).sort((a,b)=>b[1]-a[1]).map(([s,c])=>'<div style="display:flex;align-items:center;gap:10px;margin-bottom:5px"><div style="width:120px;font-size:11px;text-align:right;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s+'</div><div style="flex:1;height:24px;background:var(--surface-2);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+(c/mx*100)+'%;background:var(--accent);border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;min-width:28px"><span style="font-size:10px;font-weight:600">'+c+'</span></div></div></div>').join('')||'<p style="color:var(--text-muted)">'+t('no_data')+'</p>';
+    return '<tr><td class="mono">'+new Date(s.timestamp).toLocaleString()+'</td><td><strong>'+s.attendeeName+'</strong></td><td>'+s.attendeeEmail+'</td><td>'+(s.attendeePhone||'—')+'</td><td>'+(s.attendeeCompany||'—')+'</td><td><span style="color:var(--accent)">'+s.stand+'</span></td><td><span class="comment-preview" title="'+cm.replace(/"/g,'&quot;')+'">'+(cm||'—')+'</span></td></tr>';}).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">'+t('no_data')+'</td></tr>';
+
+  // Matrix: visitor × stand
+  renderMatrix();
+}
+function renderMatrix(){
+  const visitors={},standSet=new Set();
+  scans.forEach(s=>{
+    if(!visitors[s.attendeeId])visitors[s.attendeeId]={name:s.attendeeName,email:s.attendeeEmail,company:s.attendeeCompany||'',stands:new Set()};
+    visitors[s.attendeeId].stands.add(s.stand);
+    standSet.add(s.stand);
+  });
+  const sl=[...standSet].sort(),tbl=document.getElementById('matrixTable');
+  if(!sl.length){tbl.innerHTML='<tr><td style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px">'+t('no_data')+'</td></tr>';return;}
+  let h='<thead><tr><th style="min-width:140px">'+t('col_attendee')+'</th>';
+  sl.forEach(s=>{h+='<th style="writing-mode:vertical-lr;transform:rotate(180deg);font-size:9px;max-width:30px;padding:8px 4px;text-align:center">'+s+'</th>'});
+  h+='<th style="text-align:center;font-size:9px">Total</th></tr></thead><tbody>';
+  const sorted=Object.values(visitors).sort((a,b)=>b.stands.size-a.stands.size);
+  sorted.forEach(v=>{
+    h+='<tr><td style="font-size:11px"><strong>'+v.name+'</strong>'+(v.company?' <span style="color:var(--text-muted);font-size:10px">'+v.company+'</span>':'')+'</td>';
+    sl.forEach(s=>{h+='<td style="text-align:center">'+(v.stands.has(s)?'<span style="color:var(--green);font-size:14px">●</span>':'<span style="color:var(--surface-3)">·</span>')+'</td>'});
+    h+='<td style="text-align:center;font-weight:700;color:var(--accent)">'+v.stands.size+'</td></tr>';
+  });
+  tbl.innerHTML=h+'</tbody>';
 }
 function exportCSV(){if(!scans.length){alert(t('no_scans'));return;}
 let csv='Timestamp,ID,Name,Email,Phone,Company,Stand,Tags,Comments\n';scans.forEach(s=>{csv+='"'+s.timestamp+'","'+s.attendeeId+'","'+s.attendeeName+'","'+s.attendeeEmail+'","'+(s.attendeePhone||'')+'","'+(s.attendeeCompany||'')+'","'+s.stand+'","'+(s.tags||'')+'","'+(s.comments||'').replace(/"/g,'""')+'"\n';});
@@ -981,9 +951,8 @@ const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob)
 // ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',async()=>{
   // Set logos
-  document.querySelectorAll('#navLogo,#pinLogo').forEach(img=>img.src='data:image/png;base64,'+NAV_LOGO);
+  document.getElementById('navLogo').src='data:image/png;base64,'+NAV_LOGO;
   document.getElementById('newStand').addEventListener('keydown',e=>{if(e.key==='Enter')addStand()});
-  document.getElementById('pinInput').addEventListener('keydown',e=>{if(e.key==='Enter')verifyPin()});
   
   applyLang();
 
@@ -991,39 +960,48 @@ document.addEventListener('DOMContentLoaded',async()=>{
   const urlEventId=params.get('event');
 
   if(urlEventId){
-    // Supplier mode: show PIN screen
-    document.getElementById('pinScreen').classList.remove('hidden');
-    const cachedPin=localStorage.getItem('qh_pin');
-    const cachedEid=localStorage.getItem('qh_eventId');
-    if(cachedPin&&cachedEid===urlEventId){
-      document.getElementById('pinInput').value=cachedPin;
-      verifyPin();
+    // Supplier mode: go straight to scanner
+    const fc=params.get('fc');
+    if(fc){
+      try{
+        const config=JSON.parse(decodeURIComponent(fc));
+        if(initFirebase(config)){
+          const loaded=await loadEvent(urlEventId);
+          if(loaded){
+            document.getElementById('tabBar').style.display='none';
+            listenAttendees();listenScans();
+            populateStandSelectors();
+            showView('scanner');
+          }
+        }
+      }catch(e){console.error(e);}
     }
   }else{
-    // Admin mode: check if event already configured
+    // Admin mode: no PIN, go straight to app
+    document.getElementById('pinScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    isAdmin=true;
     const savedConfig=localStorage.getItem('qh_firebaseConfig');
     const savedEid=localStorage.getItem('qh_eventId');
-    const savedPin=localStorage.getItem('qh_eventPin');
-    if(savedConfig&&savedEid&&savedPin){
-      // Event exists — show PIN screen for admin too
-      document.getElementById('pinScreen').classList.remove('hidden');
-      isAdmin=true;
-      // Try auto-login with cached pin
-      const cachedPin=localStorage.getItem('qh_pin');
-      if(cachedPin){
-        document.getElementById('pinInput').value=cachedPin;
-        await adminLogin(savedConfig,savedEid,cachedPin,savedPin);
-      }
-    }else{
-      // First time setup — go straight to setup (no PIN yet)
-      document.getElementById('mainApp').classList.remove('hidden');
-      isAdmin=true;
-      if(localStorage.getItem('qh_firebaseConfig'))document.getElementById('firebaseConfig').value=localStorage.getItem('qh_firebaseConfig');
-      if(localStorage.getItem('qh_eventName'))document.getElementById('eventName').value=localStorage.getItem('qh_eventName');
-      if(localStorage.getItem('qh_eventDate'))document.getElementById('eventDate').value=localStorage.getItem('qh_eventDate');
-      if(localStorage.getItem('qh_eventPin'))document.getElementById('eventPin').value=localStorage.getItem('qh_eventPin');
-      if(localStorage.getItem('qh_sheetUrl'))document.getElementById('sheetUrl').value=localStorage.getItem('qh_sheetUrl');
+    if(savedConfig&&savedEid){
+      try{
+        const config=JSON.parse(savedConfig);
+        if(initFirebase(config)){
+          const loaded=await loadEvent(savedEid);
+          if(loaded){
+            listenAttendees();listenScans();
+            stands=eventData.stands||[];
+            populateStandSelectors();
+            showSetupStep(4);
+            renderSetupSummary();
+          }
+        }
+      }catch(e){console.error(e);}
     }
+    if(localStorage.getItem('qh_firebaseConfig'))document.getElementById('firebaseConfig').value=localStorage.getItem('qh_firebaseConfig');
+    if(localStorage.getItem('qh_eventName'))document.getElementById('eventName').value=localStorage.getItem('qh_eventName');
+    if(localStorage.getItem('qh_eventDate'))document.getElementById('eventDate').value=localStorage.getItem('qh_eventDate');
+    if(localStorage.getItem('qh_sheetUrl'))document.getElementById('sheetUrl').value=localStorage.getItem('qh_sheetUrl');
   }
   // Restore selected stand
   const ss=localStorage.getItem('selStand');if(ss){const sel=document.getElementById('scannerStandSelect');if(sel){for(const o of sel.options)if(o.value===ss)o.selected=true;}}
