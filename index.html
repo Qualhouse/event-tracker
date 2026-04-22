@@ -97,13 +97,17 @@ label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-
 .scan-log-item .time{color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:10px}
 
 /* COMMENT MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:100%;max-width:420px}
-.modal h2{font-size:18px;margin-bottom:4px}
-.modal .modal-sub{color:var(--text-dim);font-size:12px;margin-bottom:16px}
-.quick-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.quick-tag{padding:6px 12px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface-2);color:var(--text-dim);transition:all .2s}
-.quick-tag.selected{background:var(--accent-glow);border-color:var(--accent);color:var(--accent)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:flex;align-items:center;justify-content:center;padding:12px;animation:fadeIn .2s;overflow-y:auto}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:100%;max-width:480px;max-height:95vh;overflow-y:auto}
+.modal h2{font-size:22px;margin-bottom:6px;font-weight:700}
+.modal .modal-sub{color:var(--text-dim);font-size:14px;margin-bottom:18px}
+.modal label{font-size:14px;font-weight:600;margin-bottom:8px;color:var(--text)}
+.modal textarea{font-size:15px;padding:12px 14px;min-height:80px}
+.modal .btn{font-size:15px;padding:14px 22px}
+.quick-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.quick-tag{padding:12px 16px;border-radius:24px;font-size:14px;font-weight:500;cursor:pointer;border:2px solid var(--border);background:var(--surface-2);color:var(--text);transition:all .2s;min-height:44px;display:flex;align-items:center}
+.quick-tag:active{transform:scale(.97)}
+.quick-tag.selected{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);font-weight:600}
 
 /* PIN SCREEN */
 
@@ -374,7 +378,7 @@ const LANG={pt:{
   cm_title:'Notas sobre a Visita',cm_sub_with_history:'Este visitante já passou por:',cm_sub:'Adicione comentários.',
   cm_tags_label:'Etiquetas Rápidas',cm_tag_interested:'Interessado em produtos',cm_tag_tried:'Experimentou produtos',
   cm_tag_callback:'Pede contacto',cm_tag_quotation:'Pediu orçamento',cm_tag_partner:'Possível parceiro',cm_tag_nointerest:'Sem interesse',
-  cm_notes_label:'Notas',cm_notes_ph:'Produtos discutidos, observações...',cm_save:'Guardar',cm_skip:'Saltar',
+  cm_notes_label:'Notas',cm_notes_ph:'Produtos discutidos, observações...',cm_save:'Guardar',cm_skip:'Saltar',saved_ok:'Guardado',
   total_scans:'Leituras',unique_visitors:'Visitantes',active_stands:'Stands',avg_visits:'Média/Pessoa',
   registered:'Inscritos',conversion:'Conversão',matrix_title:'Matriz Visitante × Stand',matrix_sub:'Que visitantes passaram por que stands. Ordenado pelos mais ativos.',
   already_scanned:'já registado neste stand',unknown_badge:'QR não reconhecido',select_stand_first:'Selecione o seu stand!',
@@ -408,7 +412,7 @@ const LANG={pt:{
   cm_title:'Visit Notes',cm_sub_with_history:'This visitor already passed by:',cm_sub:'Add comments.',
   cm_tags_label:'Quick Tags',cm_tag_interested:'Interested in products',cm_tag_tried:'Tried products',
   cm_tag_callback:'Requests follow-up',cm_tag_quotation:'Requested quote',cm_tag_partner:'Potential partner',cm_tag_nointerest:'No interest',
-  cm_notes_label:'Notes',cm_notes_ph:'Products discussed, observations...',cm_save:'Save',cm_skip:'Skip',
+  cm_notes_label:'Notes',cm_notes_ph:'Products discussed, observations...',cm_save:'Save',cm_skip:'Skip',saved_ok:'Saved',
   total_scans:'Scans',unique_visitors:'Visitors',active_stands:'Stands',avg_visits:'Avg/Person',
   registered:'Registered',conversion:'Conversion',matrix_title:'Visitor × Stand Matrix',matrix_sub:'Which visitors went to which stands. Sorted by most active.',
   already_scanned:'already scanned at this stand',unknown_badge:'Unrecognized QR',select_stand_first:'Select your stand first!',
@@ -777,22 +781,24 @@ function saveSelectedStand(){const v=document.getElementById('scannerStandSelect
 // ═══════════════════════════════════════════
 function showCommentModal(att,stand){
   const tagKeys=['cm_tag_interested','cm_tag_tried','cm_tag_callback','cm_tag_quotation','cm_tag_partner','cm_tag_nointerest'];
-  // Find previous scans of this visitor (from other stands)
   const prevScans=scans.filter(s=>s.attendeeId===att.id);
   let historyHtml='';
   if(prevScans.length>0){
-    historyHtml='<div class="visitor-history"><strong>'+t('cm_sub_with_history')+'</strong><br>'+
-      prevScans.map(s=>'• '+s.stand+(s.tags?' ('+s.tags+')':'')+(s.comments?' — '+s.comments:'')).join('<br>')+'</div>';
+    historyHtml='<div class="visitor-history" style="padding:14px;font-size:13px;margin-bottom:16px"><strong>'+t('cm_sub_with_history')+'</strong><br>'+
+      prevScans.map(s=>'• <strong>'+s.stand+'</strong>'+(s.tags?' — '+s.tags:'')+(s.comments?' — '+s.comments:'')).join('<br>')+'</div>';
   }
   const modal=document.getElementById('commentModal');
   modal.className='modal-overlay';
-  modal.innerHTML='<div class="modal"><h2>'+t('cm_title')+'</h2><div class="modal-sub">'+att.name+(att.company?' · '+att.company:'')+' — '+stand+'</div>'+
+  modal.innerHTML='<div class="modal"><h2>✓ '+att.name+'</h2>'+
+    '<div class="modal-sub">'+(att.company?att.company+' · ':'')+'<strong style="color:var(--accent)">'+stand+'</strong></div>'+
     historyHtml+
-    '<label style="margin-top:12px;margin-bottom:6px">'+t('cm_tags_label')+'</label>'+
+    '<label>'+t('cm_tags_label')+'</label>'+
     '<div class="quick-tags" id="cmTags">'+tagKeys.map(k=>'<div class="quick-tag" onclick="this.classList.toggle(\'selected\')" data-tag="'+t(k)+'">'+t(k)+'</div>').join('')+'</div>'+
-    '<label>'+t('cm_notes_label')+'</label><textarea id="cmNotes" rows="3" placeholder="'+t('cm_notes_ph')+'" style="margin-bottom:12px"></textarea>'+
-    '<div style="display:flex;gap:6px"><button class="btn btn-primary" style="flex:1" onclick="saveComment(\''+att.id+'\',\''+stand.replace(/'/g,"\\'")+'\')">'+t('cm_save')+'</button>'+
-    '<button class="btn btn-secondary" onclick="saveComment(\''+att.id+'\',\''+stand.replace(/'/g,"\\'")+'\',true)">'+t('cm_skip')+'</button></div></div>';
+    '<label>'+t('cm_notes_label')+'</label><textarea id="cmNotes" rows="4" placeholder="'+t('cm_notes_ph')+'" style="margin-bottom:18px;width:100%"></textarea>'+
+    '<div style="display:flex;gap:10px">'+
+      '<button class="btn btn-primary" style="flex:2" onclick="saveComment(\''+att.id+'\',\''+stand.replace(/'/g,"\\'")+'\')">'+t('cm_save')+'</button>'+
+      '<button class="btn btn-secondary" style="flex:1" onclick="saveComment(\''+att.id+'\',\''+stand.replace(/'/g,"\\'")+'\',true)">'+t('cm_skip')+'</button>'+
+    '</div></div>';
 }
 
 async function saveComment(attId,stand,skip){
@@ -806,7 +812,16 @@ async function saveComment(attId,stand,skip){
   const scan={timestamp:new Date().toISOString(),attendeeId:att.id,attendeeName:att.name,attendeeEmail:att.email,attendeePhone:att.phone||'',attendeeCompany:att.company||'',stand,comments,tags};
   await addScan(scan);
   addToScanLog(scan);
-  document.getElementById('commentModal').className='hidden';
+  // Show quick confirmation then close
+  const modal=document.getElementById('commentModal');
+  modal.innerHTML='<div class="modal" style="text-align:center;padding:40px 24px"><div style="font-size:48px;margin-bottom:12px">✓</div><h2 style="color:var(--green);margin-bottom:8px">'+t('saved_ok')+'</h2><div class="modal-sub">'+att.name+(tags?' · '+tags:'')+'</div></div>';
+  // Vibrate for confirmation
+  if(navigator.vibrate)navigator.vibrate([50,30,50]);
+  // Auto-close after 1.2s
+  setTimeout(()=>{
+    modal.className='hidden';
+    modal.innerHTML='';
+  },1200);
 }
 
 // ═══════════════════════════════════════════
