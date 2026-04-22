@@ -6,7 +6,7 @@
 <title>Qualhouse · Event Lead Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -68,9 +68,14 @@ label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-
 /* SCANNER */
 .scanner-container{display:flex;flex-direction:column;align-items:center;gap:16px;padding-top:12px}
 .scanner-stand-select select{font-size:15px;padding:12px 16px;text-align:center;background:var(--accent-glow);border-color:var(--accent)}
-#video-container{position:relative;width:100%;max-width:400px;aspect-ratio:1;border-radius:var(--radius);overflow:hidden;background:var(--surface);border:2px solid var(--border)}
-#video-container video{width:100%;height:100%;object-fit:cover}
-#video-container canvas{display:none}
+#qr-reader{border-radius:var(--radius);overflow:hidden;border:2px solid var(--border);background:var(--surface)}
+#qr-reader video{border-radius:var(--radius);max-width:100%!important}
+#qr-reader__dashboard_section_csr{padding:8px!important}
+#qr-reader__dashboard_section_swaplink{color:var(--accent)!important}
+#qr-reader__status_span{background:transparent!important;color:var(--text)!important}
+#qr-reader__camera_selection{background:var(--surface-2)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:var(--radius-sm)!important;padding:6px!important}
+#qr-reader button{background:var(--accent)!important;color:#fff!important;border:none!important;padding:8px 14px!important;border-radius:var(--radius-sm)!important;font-family:inherit!important;cursor:pointer!important}
+#qr-reader img[alt="Info icon"]{display:none!important}
 .scanner-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .scan-frame{width:200px;height:200px;border:2px solid rgba(226,138,50,.4);border-radius:16px;position:relative}
 .scan-frame::before,.scan-frame::after{content:'';position:absolute;width:30px;height:30px;border-color:var(--accent);border-style:solid}
@@ -272,10 +277,7 @@ body{background:#fff!important;margin:0!important;padding:0!important;-webkit-pr
       <label data-i18n="your_stand"></label>
       <select id="scannerStandSelect" onchange="saveSelectedStand()" style="font-size:15px;padding:12px 16px;text-align:center;background:var(--accent-glow);border-color:var(--accent)"><option value="" data-i18n="select_stand"></option></select>
     </div>
-    <div id="video-container">
-      <video id="video" autoplay playsinline></video><canvas id="canvas"></canvas>
-      <div class="scanner-overlay"><div class="scan-frame"><div class="scan-corners-bottom"></div><div class="scan-line"></div></div></div>
-    </div>
+    <div id="qr-reader" style="width:100%;max-width:400px"></div>
     <div id="scanResult"></div>
     <div style="width:100%;max-width:400px">
       <button class="btn btn-secondary" style="width:100%" onclick="toggleManualEntry()" data-i18n="no_badge_manual"></button>
@@ -508,6 +510,7 @@ function showView(name){
   document.getElementById(name+'View').classList.add('active');
   document.querySelectorAll('[data-i18n-tab]').forEach(t=>{if(t.dataset.i18nTab===name)t.classList.add('active')});
   if(name==='scanner')startScanner();
+  else stopScanner();
   if(name==='badges')renderBadges();
   if(name==='dashboard')renderDashboard();
   if(name==='checkin')renderPendingGuests();
@@ -695,57 +698,51 @@ function populateStandSelectors(){
 // SCANNER
 // ═══════════════════════════════════════════
 let scannerRunning=false,lastScanTime=0;
+let html5QrScanner=null;
 function startScanner(){
   populateStandSelectors();
   if(scannerRunning)return;
-  const video=document.getElementById('video');
-  const canvas=document.getElementById('canvas');
-  const ctx=canvas.getContext('2d',{willReadFrequently:true});
   
-  const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}};
+  // Use html5-qrcode library (much more reliable on iOS Safari than jsQR)
+  if(!html5QrScanner){
+    html5QrScanner=new Html5Qrcode("qr-reader");
+  }
   
-  navigator.mediaDevices.getUserMedia(constraints).then(stream=>{
-    video.srcObject=stream;
-    video.setAttribute('playsinline','true');
-    video.play();
-    scannerRunning=true;
-    let frameCount=0;
-    
-    function tick(){
-      if(!scannerRunning)return;
-      if(video.readyState===video.HAVE_ENOUGH_DATA){
-        canvas.width=video.videoWidth;
-        canvas.height=video.videoHeight;
-        ctx.drawImage(video,0,0,canvas.width,canvas.height);
-        const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
-        
-        // Try scanning every 3rd frame for performance
-        frameCount++;
-        if(frameCount%3===0){
-          try{
-            const code=jsQR(imageData.data,imageData.width,imageData.height,{inversionAttempts:'attemptBoth'});
-            if(code&&code.data&&code.data.length>3&&Date.now()-lastScanTime>2000){
-              lastScanTime=Date.now();
-              console.log('QR detected:',code.data);
-              processScan(code.data);
-            }
-          }catch(e){console.error('jsQR error:',e);}
-        }
-      }
-      requestAnimationFrame(tick);
+  const config={
+    fps:10,
+    qrbox:{width:250,height:250},
+    aspectRatio:1.0,
+    disableFlip:false
+  };
+  
+  html5QrScanner.start(
+    {facingMode:"environment"},
+    config,
+    (decodedText)=>{
+      // On successful scan
+      if(Date.now()-lastScanTime<2000)return;
+      lastScanTime=Date.now();
+      console.log('QR detected:',decodedText);
+      processScan(decodedText);
+    },
+    (errorMessage)=>{
+      // Called continuously when no QR is found - ignore
     }
-    requestAnimationFrame(tick);
+  ).then(()=>{
+    scannerRunning=true;
+    console.log('Scanner started successfully');
   }).catch(err=>{
-    console.error('Camera error:',err);
-    // Try without facingMode constraint as fallback
-    navigator.mediaDevices.getUserMedia({video:true}).then(stream=>{
-      video.srcObject=stream;video.play();scannerRunning=true;
-      function tick2(){if(!scannerRunning)return;if(video.readyState===video.HAVE_ENOUGH_DATA){canvas.width=video.videoWidth;canvas.height=video.videoHeight;ctx.drawImage(video,0,0);const id2=ctx.getImageData(0,0,canvas.width,canvas.height);try{const c2=jsQR(id2.data,id2.width,id2.height,{inversionAttempts:'attemptBoth'});if(c2&&c2.data&&Date.now()-lastScanTime>2000){lastScanTime=Date.now();processScan(c2.data);}}catch(e){}}requestAnimationFrame(tick2);}
-      requestAnimationFrame(tick2);
-    }).catch(err2=>{
-      document.getElementById('scanResult').innerHTML='<div class="scan-result error">Camera error: '+err2.message+'</div>';
-    });
+    console.error('Scanner start error:',err);
+    document.getElementById('scanResult').innerHTML='<div class="scan-result error">Camera error: '+err+'</div>';
   });
+}
+
+function stopScanner(){
+  if(html5QrScanner&&scannerRunning){
+    html5QrScanner.stop().then(()=>{
+      scannerRunning=false;
+    }).catch(e=>console.error('Stop error:',e));
+  }
 }
 
 function processScan(data){
