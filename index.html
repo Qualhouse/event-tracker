@@ -116,6 +116,7 @@ label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-
 .badge-card .badge-company{font-size:13px;color:#e28a32;font-weight:700;margin-bottom:4px}
 .badge-card .badge-id{font-family:'JetBrains Mono',monospace;font-size:9px;color:#ccc;margin-top:8px;letter-spacing:1px}
 .badge-card .qr-container{padding:8px 0;background:#fff;line-height:0}
+.badge-card .qr-img{width:130px;height:130px;display:block;margin:0 auto}
 .badge-card .qr-container img,.badge-card .qr-container canvas{width:130px!important;height:130px!important}
 
 @media print{
@@ -354,7 +355,8 @@ const LANG={pt:{
   supplier_stands:'Stands de Expositores',stands_desc:'Adicione cada stand. Os expositores escolherão o seu de um dropdown.',
   stand_name_ph:'Nome do stand',add:'Adicionar',finish_setup:'Finalizar →',
   setup_complete:'Tudo Pronto',print_badges:'🖨 Crachás',open_scanner:'Scanner',
-  share_supplier_link:'📤 Link para expositores',supplier_link_label:'Link para partilhar com os expositores:',
+  share_supplier_link:'📤 Gerar links',supplier_link_label:'Link para expositores (só scanner):',
+  checkin_link_label:'Link para receção/check-in (check-in + crachás + painel):',checkin_link_desc:'Envie este link aos PCs da receção. Podem registar walk-ins, imprimir crachás e ver o painel.',
   supplier_link_desc:'Os expositores abrem este link, introduzem o PIN, escolhem o stand e começam a ler crachás.',
   walkin_title:'Registo Walk-in',walkin_sub:'Visitantes sem inscrição prévia.',new_walkin:'Novo Visitante',
   full_name:'Nome Completo *',phone:'Telefone *',company_optional:'Empresa (opcional)',
@@ -387,7 +389,8 @@ const LANG={pt:{
   supplier_stands:'Supplier Stands',stands_desc:'Add each stand. Suppliers will pick theirs from a dropdown.',
   stand_name_ph:'Stand name',add:'Add',finish_setup:'Finish →',
   setup_complete:'All Set',print_badges:'🖨 Badges',open_scanner:'Scanner',
-  share_supplier_link:'📤 Supplier link',supplier_link_label:'Link to share with suppliers:',
+  share_supplier_link:'📤 Generate links',supplier_link_label:'Supplier link (scanner only):',
+  checkin_link_label:'Check-in link (check-in + badges + dashboard):',checkin_link_desc:'Send this to reception PCs. They can register walk-ins, print badges and view the dashboard.',
   supplier_link_desc:'Suppliers open this link, enter the PIN, pick their stand and start scanning.',
   walkin_title:'Walk-in Registration',walkin_sub:'Visitors without prior registration.',new_walkin:'New Visitor',
   full_name:'Full Name *',phone:'Phone *',company_optional:'Company (optional)',
@@ -667,10 +670,21 @@ function renderSetupSummary(){
 function generateSupplierLink(){
   const base=window.location.origin+window.location.pathname;
   const fc=encodeURIComponent(JSON.stringify(eventData.firebaseConfig));
-  const url=base+'?event='+eventId+'&fc='+fc;
-  document.getElementById('supplierLinkUrl').value=url;
+  const supplierUrl=base+'?event='+eventId+'&fc='+fc+'&mode=supplier';
+  const checkinUrl=base+'?event='+eventId+'&fc='+fc+'&mode=checkin';
+  document.getElementById('supplierLinkUrl').value=supplierUrl;
   document.getElementById('supplierLinkResult').classList.remove('hidden');
-  if(navigator.clipboard)navigator.clipboard.writeText(url);
+  // Also show check-in link
+  let checkinDiv=document.getElementById('checkinLinkResult');
+  if(!checkinDiv){
+    checkinDiv=document.createElement('div');checkinDiv.id='checkinLinkResult';
+    checkinDiv.style.cssText='margin-top:10px';
+    checkinDiv.innerHTML='<div class="config-section" style="margin-bottom:0"><label>'+t('checkin_link_label')+'</label><input type="text" id="checkinLinkUrl" readonly onclick="this.select()" style="margin-top:4px;font-size:11px" value="'+checkinUrl+'"><p style="font-size:11px;color:var(--text-dim);margin-top:8px">'+t('checkin_link_desc')+'</p></div>';
+    document.getElementById('supplierLinkResult').after(checkinDiv);
+  }else{
+    document.getElementById('checkinLinkUrl').value=checkinUrl;
+  }
+  if(navigator.clipboard)navigator.clipboard.writeText(supplierUrl);
 }
 
 function populateStandSelectors(){
@@ -681,32 +695,58 @@ function populateStandSelectors(){
 // SCANNER
 // ═══════════════════════════════════════════
 let scannerRunning=false,lastScanTime=0;
-function startScanner(){populateStandSelectors();if(scannerRunning)return;const video=document.getElementById('video'),canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});
-navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:1280}}}).then(stream=>{
-  video.srcObject=stream;
-  video.setAttribute('playsinline','true');
-  video.play();
-  scannerRunning=true;
-  function tick(){
-    if(!scannerRunning)return;
-    if(video.readyState===video.HAVE_ENOUGH_DATA){
-      canvas.width=video.videoWidth;
-      canvas.height=video.videoHeight;
-      ctx.drawImage(video,0,0,canvas.width,canvas.height);
-      const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
-      const code=jsQR(imageData.data,imageData.width,imageData.height,{inversionAttempts:'attemptBoth'});
-      if(code&&code.data&&Date.now()-lastScanTime>2000){
-        lastScanTime=Date.now();
-        processScan(code.data);
+function startScanner(){
+  populateStandSelectors();
+  if(scannerRunning)return;
+  const video=document.getElementById('video');
+  const canvas=document.getElementById('canvas');
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  
+  const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}};
+  
+  navigator.mediaDevices.getUserMedia(constraints).then(stream=>{
+    video.srcObject=stream;
+    video.setAttribute('playsinline','true');
+    video.play();
+    scannerRunning=true;
+    let frameCount=0;
+    
+    function tick(){
+      if(!scannerRunning)return;
+      if(video.readyState===video.HAVE_ENOUGH_DATA){
+        canvas.width=video.videoWidth;
+        canvas.height=video.videoHeight;
+        ctx.drawImage(video,0,0,canvas.width,canvas.height);
+        const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+        
+        // Try scanning every 3rd frame for performance
+        frameCount++;
+        if(frameCount%3===0){
+          try{
+            const code=jsQR(imageData.data,imageData.width,imageData.height,{inversionAttempts:'attemptBoth'});
+            if(code&&code.data&&code.data.length>3&&Date.now()-lastScanTime>2000){
+              lastScanTime=Date.now();
+              console.log('QR detected:',code.data);
+              processScan(code.data);
+            }
+          }catch(e){console.error('jsQR error:',e);}
+        }
       }
+      requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-}).catch(err=>{
-  console.error('Camera error:',err);
-  document.getElementById('scanResult').innerHTML='<div class="scan-result error">Camera: '+err.message+'</div>';
-});}
+  }).catch(err=>{
+    console.error('Camera error:',err);
+    // Try without facingMode constraint as fallback
+    navigator.mediaDevices.getUserMedia({video:true}).then(stream=>{
+      video.srcObject=stream;video.play();scannerRunning=true;
+      function tick2(){if(!scannerRunning)return;if(video.readyState===video.HAVE_ENOUGH_DATA){canvas.width=video.videoWidth;canvas.height=video.videoHeight;ctx.drawImage(video,0,0);const id2=ctx.getImageData(0,0,canvas.width,canvas.height);try{const c2=jsQR(id2.data,id2.width,id2.height,{inversionAttempts:'attemptBoth'});if(c2&&c2.data&&Date.now()-lastScanTime>2000){lastScanTime=Date.now();processScan(c2.data);}}catch(e){}}requestAnimationFrame(tick2);}
+      requestAnimationFrame(tick2);
+    }).catch(err2=>{
+      document.getElementById('scanResult').innerHTML='<div class="scan-result error">Camera error: '+err2.message+'</div>';
+    });
+  });
+}
 
 function processScan(data){
   const stand=document.getElementById('scannerStandSelect').value;
@@ -792,7 +832,7 @@ async function registerWalkin(){
         '<div class="badge-name">'+name+'</div>'+
         (company?'<div class="badge-company">'+company+'</div>':'')+
       '</div>'+
-      '<div class="badge-left"><div class="qr-container" id="qr-w-'+id+'"></div></div>'+
+      '<div class="badge-left"><img src="'+makeQrUrl('EVT|'+id+'|'+name+'|'+email+'|'+(phone||'')+'|'+(company||''))+'" class="qr-img" width="130" height="130"></div>'+
       '<div class="badge-right" style="border:none;padding-top:0">'+
         '<div class="badge-detail">'+email+'</div>'+
         (phone?'<div class="badge-detail">'+phone+'</div>':'')+
@@ -803,7 +843,7 @@ async function registerWalkin(){
       '<button class="btn btn-primary" onclick="printSingleBadgeFromEl(\'walkinBadgeModal\')">🖨 '+t('print_badge')+'</button>'+
       '<button class="btn btn-secondary" onclick="document.getElementById(\'commentModal\').className=\'hidden\'">'+t('register_another')+'</button>'+
     '</div></div>';
-  setTimeout(()=>{new QRCode(document.getElementById('qr-w-'+id),{text:'EVT|'+id+'|'+name+'|'+email+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.L})},100);
+  // QR generated via img src
   ['walkinName','walkinEmail','walkinPhone','walkinCompany'].forEach(x=>document.getElementById(x).value='');
 }
 function closeWalkinResult(){document.getElementById('walkinBadgeResult').classList.add('hidden');document.getElementById('walkinName').focus();}
@@ -866,7 +906,7 @@ async function completeGuest(id){
         '<div class="badge-name">'+name+'</div>'+
         (company?'<div class="badge-company">'+company+'</div>':'')+
       '</div>'+
-      '<div class="badge-left"><div class="qr-container" id="qr-g-'+id+'"></div></div>'+
+      '<div class="badge-left"><img src="'+makeQrUrl('EVT|'+id+'|'+name+'|'+(email||'')+'|'+(phone||'')+'|'+(company||''))+'" class="qr-img" width="130" height="130"></div>'+
       '<div class="badge-right" style="border:none;padding-top:0">'+
         '<div class="badge-detail">'+(email||'')+'</div>'+
         (phone?'<div class="badge-detail">'+phone+'</div>':'')+
@@ -877,7 +917,7 @@ async function completeGuest(id){
       '<button class="btn btn-primary" onclick="printSingleBadgeFromEl(\'guestBadgeCard\')">🖨 '+t('print_badge')+'</button>'+
       '<button class="btn btn-secondary" onclick="document.getElementById(\'commentModal\').className=\'hidden\';renderPendingGuests()">'+t('cancel')+'</button>'+
     '</div></div>';
-  setTimeout(()=>{new QRCode(document.getElementById('qr-g-'+id),{text:'EVT|'+id+'|'+name+'|'+(email||'')+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.L})},100);
+  // QR generated via img src
 }
 
 // MANUAL ENTRY
@@ -934,42 +974,27 @@ const pending=attendees.filter(a=>a.pending);
 if(!printable.length&&!pending.length){grid.innerHTML='<p style="color:var(--text-dim)">'+t('no_data')+'</p>';return;}
 if(pending.length){const msg=document.createElement('p');msg.style.cssText='color:var(--orange);font-size:13px;margin-bottom:14px';msg.textContent='⏳ '+pending.length+' '+t('pending_guests').toLowerCase();grid.appendChild(msg);}
 const evName=eventData?eventData.name:'';
-// Render all cards first, then generate QR codes in batches
-const qrQueue=[];
 printable.forEach(a=>{
   const card=document.createElement('div');card.className='badge-card';
-  const qrId='qr-'+a.id;
+  const qrData='EVT|'+a.id+'|'+a.name+'|'+a.email+'|'+(a.phone||'')+'|'+(a.company||'');
+  const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(qrData);
   card.innerHTML=
     '<div class="badge-right">'+
       '<div class="badge-top"><img src="data:image/png;base64,'+BADGE_LOGO_DARK+'" alt="" class="badge-logo"><span class="badge-event">'+evName+'</span></div>'+
       '<div class="badge-name">'+a.name+'</div>'+
       (a.company?'<div class="badge-company">'+a.company+'</div>':'')+
     '</div>'+
-    '<div class="badge-left"><div class="qr-container" id="'+qrId+'"></div></div>'+
+    '<div class="badge-left"><img src="'+qrUrl+'" class="qr-img" alt="QR" width="130" height="130"></div>'+
     '<div class="badge-right" style="border:none;padding-top:0">'+
       '<div class="badge-detail">'+a.email+'</div>'+
       (a.phone?'<div class="badge-detail">'+a.phone+'</div>':'')+
       '<div class="badge-id">'+a.id+'</div>'+
     '</div>';
   grid.appendChild(card);
-  qrQueue.push({el:qrId,data:'EVT|'+a.id+'|'+a.name+'|'+a.email+'|'+(a.phone||'')+'|'+(a.company||'')});
 });
-// Generate QR codes ONE AT A TIME with delays for reliability
-let qrIdx=0;
-function processNextQr(){
-  if(qrIdx>=qrQueue.length)return;
-  const q=qrQueue[qrIdx];
-  const el=document.getElementById(q.el);
-  if(el){
-    el.innerHTML='';
-    try{new QRCode(el,{text:q.data,width:200,height:200,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.L});}
-    catch(e){console.warn('QR fail:',q.el);}
-  }
-  qrIdx++;
-  if(qrIdx<qrQueue.length) setTimeout(processNextQr,120);
 }
-if(qrQueue.length) setTimeout(processNextQr,500);
-}
+function makeQrUrl(data){return 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
+
 // ═══════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════
@@ -1058,10 +1083,22 @@ document.addEventListener('DOMContentLoaded',async()=>{
             // Save config so supplier can refresh without losing connection
             localStorage.setItem('qh_firebaseConfig',JSON.stringify(config));
             localStorage.setItem('qh_eventId',urlEventId);
-            document.getElementById('tabBar').style.display='none';
+            localStorage.setItem('qh_mode',params.get('mode')||'supplier');
+            const mode=params.get('mode')||'supplier';
             listenAttendees();listenScans();
             populateStandSelectors();
-            showView('scanner');
+            if(mode==='checkin'){
+              // Check-in mode: show check-in + badges + dashboard
+              document.querySelectorAll('[data-i18n-tab]').forEach(tab=>{
+                const t=tab.dataset.i18nTab;
+                if(t==='setup'||t==='scanner') tab.style.display='none';
+              });
+              showView('checkin');
+            }else{
+              // Supplier mode: scanner only
+              document.getElementById('tabBar').style.display='none';
+              showView('scanner');
+            }
           }
         }
       }catch(e){console.error(e);}
@@ -1075,10 +1112,19 @@ document.addEventListener('DOMContentLoaded',async()=>{
           if(initFirebase(config)){
             const loaded=await loadEvent(cachedEid);
             if(loaded){
-              document.getElementById('tabBar').style.display='none';
+            const cachedMode=localStorage.getItem('qh_mode')||'supplier';
               listenAttendees();listenScans();
               populateStandSelectors();
-              showView('scanner');
+              if(cachedMode==='checkin'){
+                document.querySelectorAll('[data-i18n-tab]').forEach(tab=>{
+                  const t3=tab.dataset.i18nTab;
+                  if(t3==='setup'||t3==='scanner') tab.style.display='none';
+                });
+                showView('checkin');
+              }else{
+                document.getElementById('tabBar').style.display='none';
+                showView('scanner');
+              }
             }
           }
         }catch(e){console.error(e);}
