@@ -751,26 +751,27 @@ function startScanner(){
 function processScan(data){
   const stand=document.getElementById('scannerStandSelect').value;
   if(!stand){showScanResult('error',t('select_stand_first'));return;}
+  // QR contains just the attendee ID — look up in Firebase
+  const cleanData=data.trim();
   let att=null;
-  if(data.startsWith('EVT|')){
-    const p=data.split('|');
-    if(p.length>=4) att={id:p[1],name:p[2],email:p[3],phone:p[4]||'',company:p[5]||''};
-  }else if(data.startsWith('EVT:')){
-    const p=data.split(':');if(p.length>=4) att={id:p[1],name:p[2],email:p.slice(3).join(':'),phone:'',company:''};
+  // Try direct ID match first
+  att=attendees.find(a=>a.id===cleanData);
+  // Backwards compatibility: try EVT| format
+  if(!att&&cleanData.startsWith('EVT|')){
+    const p=cleanData.split('|');
+    if(p.length>=2) att=attendees.find(a=>a.id===p[1]);
+    if(!att&&p.length>=4) att={id:p[1],name:p[2],email:p[3],phone:p[4]||'',company:p[5]||''};
   }
-  if(!att){
-    // Try to find in Firebase attendees by email
-    const local=attendees.find(a=>a.email===data||a.id===data);
-    if(local)att=local;
-  }
-  if(!att){showScanResult('error',t('unknown_badge'));return;}
+  // Try email match
+  if(!att) att=attendees.find(a=>a.email===cleanData);
+  if(!att){showScanResult('error',t('unknown_badge')+': '+cleanData.substring(0,20));return;}
   if(scans.some(s=>s.attendeeId===att.id&&s.stand===stand)){showScanResult('duplicate',att.name+' '+t('already_scanned'));return;}
   if(navigator.vibrate)navigator.vibrate(100);
   showScanResult('success','✓ '+att.name+(att.company?' · '+att.company:''));
   showCommentModal(att,stand);
 }
 
-function showScanResult(type,msg){const el=document.getElementById('scanResult');el.innerHTML='<div class="scan-result '+type+'">'+msg+'</div>';setTimeout(()=>{el.innerHTML=''},4000);}
+function showScanResult(type,msg){console.log("Scan result:",type,msg);const el=document.getElementById('scanResult');el.innerHTML='<div class="scan-result '+type+'">'+msg+'</div>';setTimeout(()=>{el.innerHTML=''},4000);}
 function addToScanLog(scan){const log=document.getElementById('scanLog');const time=new Date(scan.timestamp).toLocaleTimeString();const item=document.createElement('div');item.className='scan-log-item';item.innerHTML='<span>'+scan.attendeeName+(scan.comments?' 💬':'')+'</span><span class="time">'+time+'</span>';if(log.children.length>1)log.insertBefore(item,log.children[1]);else log.appendChild(item);}
 function saveSelectedStand(){const v=document.getElementById('scannerStandSelect').value;if(v)localStorage.setItem('selStand',v);}
 
@@ -832,11 +833,9 @@ async function registerWalkin(){
         '<div class="badge-name">'+name+'</div>'+
         (company?'<div class="badge-company">'+company+'</div>':'')+
       '</div>'+
-      '<div class="badge-left"><img src="'+makeQrUrl('EVT|'+id+'|'+name+'|'+email+'|'+(phone||'')+'|'+(company||''))+'" class="qr-img" width="130" height="130"></div>'+
+      '<div class="badge-left"><img src="'+makeQrUrl(id)+'" class="qr-img" width="130" height="130"></div>'+
       '<div class="badge-right" style="border:none;padding-top:0">'+
-        '<div class="badge-detail">'+email+'</div>'+
-        (phone?'<div class="badge-detail">'+phone+'</div>':'')+
-        '<div class="badge-id">'+id+' <span style="background:#e28a32;color:#fff;padding:1px 6px;border-radius:3px;font-size:8px">WALK-IN</span></div>'+
+        '<div class="badge-id">'+id+'</div>'+
       '</div>'+
     '</div>'+
     '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px">'+
@@ -906,10 +905,8 @@ async function completeGuest(id){
         '<div class="badge-name">'+name+'</div>'+
         (company?'<div class="badge-company">'+company+'</div>':'')+
       '</div>'+
-      '<div class="badge-left"><img src="'+makeQrUrl('EVT|'+id+'|'+name+'|'+(email||'')+'|'+(phone||'')+'|'+(company||''))+'" class="qr-img" width="130" height="130"></div>'+
+      '<div class="badge-left"><img src="'+makeQrUrl(id)+'" class="qr-img" width="130" height="130"></div>'+
       '<div class="badge-right" style="border:none;padding-top:0">'+
-        '<div class="badge-detail">'+(email||'')+'</div>'+
-        (phone?'<div class="badge-detail">'+phone+'</div>':'')+
         '<div class="badge-id">'+id+'</div>'+
       '</div>'+
     '</div>'+
@@ -976,7 +973,7 @@ if(pending.length){const msg=document.createElement('p');msg.style.cssText='colo
 const evName=eventData?eventData.name:'';
 printable.forEach(a=>{
   const card=document.createElement('div');card.className='badge-card';
-  const qrData='EVT|'+a.id+'|'+a.name+'|'+a.email+'|'+(a.phone||'')+'|'+(a.company||'');
+  const qrData=a.id;
   const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(qrData);
   card.innerHTML=
     '<div class="badge-right">'+
@@ -986,14 +983,12 @@ printable.forEach(a=>{
     '</div>'+
     '<div class="badge-left"><img src="'+qrUrl+'" class="qr-img" alt="QR" width="130" height="130"></div>'+
     '<div class="badge-right" style="border:none;padding-top:0">'+
-      '<div class="badge-detail">'+a.email+'</div>'+
-      (a.phone?'<div class="badge-detail">'+a.phone+'</div>':'')+
       '<div class="badge-id">'+a.id+'</div>'+
     '</div>';
   grid.appendChild(card);
 });
 }
-function makeQrUrl(data){return 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
+function makeQrUrl(data){return 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&ecc=L&data='+encodeURIComponent(data);}
 
 // ═══════════════════════════════════════════
 // DASHBOARD
