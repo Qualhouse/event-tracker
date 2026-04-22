@@ -420,6 +420,11 @@ function applyLang(){
   document.querySelectorAll('[data-i18n-ph]').forEach(el=>el.placeholder=t(el.getAttribute('data-i18n-ph')));
   document.querySelectorAll('[data-i18n-tab]').forEach(el=>el.textContent=t(el.dataset.i18nTab));
 }
+function titleCase(str){
+  if(!str)return'';
+  return str.toLowerCase().replace(/(?:^|\s|[-'])\S/g,function(a){return a.toUpperCase();});
+}
+
 
 // ═══════════════════════════════════════════
 // STATE & FIREBASE
@@ -586,7 +591,7 @@ function handleCSV(e){
         continue;
       }
       if(email)seen[email]=1;
-      csvAttendees.push({id:'A'+String(csvAttendees.length+1).padStart(4,'0'),name:name.trim(),email:email,phone:phone,company:company});
+      csvAttendees.push({id:'A'+String(csvAttendees.length+1).padStart(4,'0'),name:titleCase(name.trim()),email:email,phone:phone,company:titleCase(company)});
     }
     let statusHtml='✓ '+csvAttendees.length+' registos';
     if(pendingCount>0) statusHtml+=' <span style="color:var(--orange)">('+pendingCount+' acompanhantes por identificar)</span>';
@@ -677,7 +682,31 @@ function populateStandSelectors(){
 // ═══════════════════════════════════════════
 let scannerRunning=false,lastScanTime=0;
 function startScanner(){populateStandSelectors();if(scannerRunning)return;const video=document.getElementById('video'),canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});
-navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:640}}}).then(stream=>{video.srcObject=stream;video.play();scannerRunning=true;requestAnimationFrame(function tick(){if(!scannerRunning)return;if(video.readyState===video.HAVE_ENOUGH_DATA){canvas.width=video.videoWidth;canvas.height=video.videoHeight;ctx.drawImage(video,0,0,canvas.width,canvas.height);const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);const code=jsQR(imageData.data,imageData.width,imageData.height,{inversionAttempts:'dontInvert'});if(code&&Date.now()-lastScanTime>1500){lastScanTime=Date.now();processScan(code.data);}}requestAnimationFrame(tick);});}).catch(()=>{document.getElementById('scanResult').innerHTML='<div class="scan-result error">Camera access denied.</div>';});}
+navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:1280}}}).then(stream=>{
+  video.srcObject=stream;
+  video.setAttribute('playsinline','true');
+  video.play();
+  scannerRunning=true;
+  function tick(){
+    if(!scannerRunning)return;
+    if(video.readyState===video.HAVE_ENOUGH_DATA){
+      canvas.width=video.videoWidth;
+      canvas.height=video.videoHeight;
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const code=jsQR(imageData.data,imageData.width,imageData.height,{inversionAttempts:'attemptBoth'});
+      if(code&&code.data&&Date.now()-lastScanTime>2000){
+        lastScanTime=Date.now();
+        processScan(code.data);
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}).catch(err=>{
+  console.error('Camera error:',err);
+  document.getElementById('scanResult').innerHTML='<div class="scan-result error">Camera: '+err.message+'</div>';
+});}
 
 function processScan(data){
   const stand=document.getElementById('scannerStandSelect').value;
@@ -750,7 +779,7 @@ async function registerWalkin(){
   if(!name||!email){alert(t('enter_name_email'));return;}
   if(attendees.find(a=>a.email.toLowerCase()===email.toLowerCase())){alert('Email já registado.');return;}
   const id='W'+Date.now().toString(36)+Math.random().toString(36).substr(2,3);
-  const att={id,name,email,phone,company,walkin:true,createdAt:new Date().toISOString()};
+  const att={id,name:titleCase(name),email,phone,company:titleCase(company),walkin:true,createdAt:new Date().toISOString()};
   await addAttendee(att);
   // Show badge in modal
   const modal=document.getElementById('commentModal');
@@ -774,7 +803,7 @@ async function registerWalkin(){
       '<button class="btn btn-primary" onclick="printSingleBadgeFromEl(\'walkinBadgeModal\')">🖨 '+t('print_badge')+'</button>'+
       '<button class="btn btn-secondary" onclick="document.getElementById(\'commentModal\').className=\'hidden\'">'+t('register_another')+'</button>'+
     '</div></div>';
-  setTimeout(()=>{new QRCode(document.getElementById('qr-w-'+id),{text:'EVT|'+id+'|'+name+'|'+email+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},100);
+  setTimeout(()=>{new QRCode(document.getElementById('qr-w-'+id),{text:'EVT|'+id+'|'+name+'|'+email+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.L})},100);
   ['walkinName','walkinEmail','walkinPhone','walkinCompany'].forEach(x=>document.getElementById(x).value='');
 }
 function closeWalkinResult(){document.getElementById('walkinBadgeResult').classList.add('hidden');document.getElementById('walkinName').focus();}
@@ -848,7 +877,7 @@ async function completeGuest(id){
       '<button class="btn btn-primary" onclick="printSingleBadgeFromEl(\'guestBadgeCard\')">🖨 '+t('print_badge')+'</button>'+
       '<button class="btn btn-secondary" onclick="document.getElementById(\'commentModal\').className=\'hidden\';renderPendingGuests()">'+t('cancel')+'</button>'+
     '</div></div>';
-  setTimeout(()=>{new QRCode(document.getElementById('qr-g-'+id),{text:'EVT|'+id+'|'+name+'|'+(email||'')+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})},100);
+  setTimeout(()=>{new QRCode(document.getElementById('qr-g-'+id),{text:'EVT|'+id+'|'+name+'|'+(email||'')+'|'+(phone||'')+'|'+(company||''),width:150,height:150,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.L})},100);
 }
 
 // MANUAL ENTRY
@@ -925,16 +954,21 @@ printable.forEach(a=>{
   grid.appendChild(card);
   qrQueue.push({el:qrId,data:'EVT|'+a.id+'|'+a.name+'|'+a.email+'|'+(a.phone||'')+'|'+(a.company||'')});
 });
-// Generate QR codes in batches of 5 with delays to ensure DOM is ready
-function processQrBatch(start){
-  const batch=qrQueue.slice(start,start+5);
-  batch.forEach(q=>{
-    const el=document.getElementById(q.el);
-    if(el){el.innerHTML='';new QRCode(el,{text:q.data,width:160,height:160,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
-  });
-  if(start+3<qrQueue.length) setTimeout(()=>processQrBatch(start+3),100);
+// Generate QR codes ONE AT A TIME with delays for reliability
+let qrIdx=0;
+function processNextQr(){
+  if(qrIdx>=qrQueue.length)return;
+  const q=qrQueue[qrIdx];
+  const el=document.getElementById(q.el);
+  if(el){
+    el.innerHTML='';
+    try{new QRCode(el,{text:q.data,width:200,height:200,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.L});}
+    catch(e){console.warn('QR fail:',q.el);}
+  }
+  qrIdx++;
+  if(qrIdx<qrQueue.length) setTimeout(processNextQr,120);
 }
-if(qrQueue.length) setTimeout(()=>processQrBatch(0),300);
+if(qrQueue.length) setTimeout(processNextQr,500);
 }
 // ═══════════════════════════════════════════
 // DASHBOARD
