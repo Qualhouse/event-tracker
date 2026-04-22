@@ -749,7 +749,7 @@ async function registerWalkin(){
   const name=document.getElementById('walkinName').value.trim(),email=document.getElementById('walkinEmail').value.trim(),phone=document.getElementById('walkinPhone').value.trim(),company=document.getElementById('walkinCompany').value.trim();
   if(!name||!email){alert(t('enter_name_email'));return;}
   if(attendees.find(a=>a.email.toLowerCase()===email.toLowerCase())){alert('Email já registado.');return;}
-  const id='W'+String(attendees.filter(a=>a.id.startsWith('W')).length+1).padStart(4,'0');
+  const id='W'+Date.now().toString(36)+Math.random().toString(36).substr(2,3);
   const att={id,name,email,phone,company,walkin:true,createdAt:new Date().toISOString()};
   await addAttendee(att);
   // Show badge in modal
@@ -860,7 +860,7 @@ async function submitManualEntry(){
   // Check if exists in Firebase
   let att=attendees.find(a=>a.email.toLowerCase()===email.toLowerCase());
   if(!att){
-    const id='W'+String(attendees.filter(a=>a.id.startsWith('W')).length+1).padStart(4,'0');
+    const id='W'+Date.now().toString(36)+Math.random().toString(36).substr(2,3);
     att={id,name,email,phone,company,walkin:true,createdAt:new Date().toISOString()};
     await addAttendee(att);
   }
