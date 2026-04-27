@@ -97,6 +97,7 @@ label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-
 .scan-log-item .time{color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:10px}
 
 /* COMMENT MODAL */
+.hidden{display:none!important}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:flex;align-items:center;justify-content:center;padding:12px;animation:fadeIn .2s;overflow-y:auto}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:100%;max-width:480px;max-height:95vh;overflow-y:auto}
 .modal h2{font-size:22px;margin-bottom:6px;font-weight:700}
@@ -904,8 +905,8 @@ async function registerWalkin(){
       '</div>'+
     '</div>'+
     '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px">'+
-      '<button class="btn btn-primary" onclick="printSingleBadgeFromEl(\'walkinBadgeModal\')">🖨 '+t('print_badge')+'</button>'+
-      '<button class="btn btn-secondary" onclick="document.getElementById(\'commentModal\').className=\'hidden\'">'+t('register_another')+'</button>'+
+      '<button class="btn btn-primary" onclick="printSingleBadgeFromEl(\'walkinBadgeModal\');closeBadgeModal()">🖨 '+t('print_badge')+'</button>'+
+      '<button class="btn btn-secondary" onclick="closeBadgeModal()">'+t('register_another')+'</button>'+
     '</div></div>';
   // QR generated via img src
   ['walkinName','walkinEmail','walkinPhone','walkinCompany'].forEach(x=>document.getElementById(x).value='');
@@ -971,6 +972,7 @@ async function completeGuest(id){
   const phone=updated.phone||'';
   // Show badge inside the modal
   const modal=document.getElementById('commentModal');
+  modal.className='modal-overlay';
   modal.innerHTML='<div class="modal" style="text-align:center">'+
     '<div style="color:var(--green);font-weight:700;font-size:16px;margin-bottom:12px">✓ '+t('registered_ok')+'</div>'+
     '<div class="badge-card" style="margin:0 auto;max-width:300px;text-align:center" id="guestBadgeCard">'+
@@ -985,10 +987,20 @@ async function completeGuest(id){
       '</div>'+
     '</div>'+
     '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px">'+
-      '<button class="btn btn-primary" onclick="printSingleBadgeFromEl(\'guestBadgeCard\')">🖨 '+t('print_badge')+'</button>'+
-      '<button class="btn btn-secondary" onclick="document.getElementById(\'commentModal\').className=\'hidden\';renderPendingGuests()">'+t('cancel')+'</button>'+
+      '<button class="btn btn-primary" onclick="printSingleBadgeFromEl(\'guestBadgeCard\');closeBadgeModal()">🖨 '+t('print_badge')+'</button>'+
+      '<button class="btn btn-secondary" onclick="closeBadgeModal()">'+t('cancel')+'</button>'+
     '</div></div>';
   // QR generated via img src
+}
+
+function closeBadgeModal(){
+  const modal=document.getElementById('commentModal');
+  modal.className='hidden';
+  modal.innerHTML='';
+  renderPendingGuests();
+  // Re-focus walk-in name input if visible
+  const wn=document.getElementById('walkinName');
+  if(wn&&document.getElementById('checkinView').classList.contains('active'))wn.focus();
 }
 
 // MANUAL ENTRY
