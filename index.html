@@ -203,7 +203,11 @@ body{background:#fff!important;margin:0!important;padding:0!important;-webkit-pr
   <!-- Step 2: CSV -->
   <div class="card hidden" id="setup-step2">
     <div class="card-title" data-i18n="import_attendees"></div>
-    <p style="font-size:12px;color:var(--text-dim);margin-bottom:14px" data-i18n="import_desc"></p>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px" data-i18n="import_desc"></p>
+    <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px">📋 Ficheiro de Comerciais (opcional, .xlsx)</label>
+    <input type="file" id="salespeopleFile" accept=".xlsx,.xls,.csv" onchange="handleSalespeople(event)" style="margin-bottom:6px">
+    <div id="salespeopleStatus" style="font-size:11px;color:var(--text-dim);margin-bottom:14px"></div>
+    <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px">👥 Ficheiro de Participantes (Eventbrite XLSX)</label>
     <input type="file" id="csvFile" accept=".csv,.xlsx,.xls" onchange="handleCSV(event)" style="margin-bottom:10px">
     <div id="csvPreview" class="hidden"><p style="font-size:12px;color:var(--green);margin-bottom:6px" id="csvCount"></p><div style="max-height:180px;overflow:auto;border:1px solid var(--border);border-radius:var(--radius-sm)"><table class="data-table" id="csvPreviewTable"></table></div></div>
     <div style="margin-top:14px"><button class="btn btn-primary" id="step2Btn" onclick="completeStep2()" disabled data-i18n="continue"></button></div>
@@ -329,7 +333,7 @@ body{background:#fff!important;margin:0!important;padding:0!important;-webkit-pr
       <input type="text" id="filterSearch" data-i18n-ph="search_ph" oninput="renderDashboard()">
     </div>
     <div style="overflow-x:auto"><table class="data-table"><thead><tr>
-      <th data-i18n="col_time"></th><th data-i18n="col_attendee"></th><th>Email</th><th data-i18n="col_phone"></th><th data-i18n="col_company"></th><th>Stand</th><th data-i18n="col_comments"></th>
+      <th data-i18n="col_time"></th><th data-i18n="col_attendee"></th><th>Email</th><th data-i18n="col_phone"></th><th data-i18n="col_company"></th><th>NIF</th><th>Comercial</th><th>Stand</th><th data-i18n="col_comments"></th>
     </tr></thead><tbody id="dashboardBody"></tbody></table></div>
   </div>
   <div class="card" style="margin-top:14px">
@@ -523,7 +527,7 @@ function showView(name){
 // ═══════════════════════════════════════════
 // SETUP (Admin only)
 // ═══════════════════════════════════════════
-let setupStands=[];
+let setupStands=['Alaska Seafood','Asoka','Bacalaos Alejandra','Balfegó','Blázquez','Campomayor','Caviaroli','Cioffi','Cropsalsa','Gbech','Glaces des Alpes','Jean Rothiau','Juanito Baker','Kingfish','La finca','Laumont','Locopolo','Maori','Masdeu','Montchiscakes','Okelan','Orien Bites','Original Gourmet','Plancton marino','Roset','Stamen','Triticum','Valrhona','Yamaaoi'];
 function showSetupStep(n){for(let i=1;i<=4;i++){document.getElementById('setup-step'+i).classList.toggle('hidden',i!==n);const ind=document.getElementById('step'+i);ind.classList.remove('active','done');if(i<n)ind.classList.add('done');if(i===n)ind.classList.add('active');}}
 
 async function completeStep1(){
@@ -548,6 +552,40 @@ async function completeStep1(){
 }
 
 let csvAttendees=[];
+let salespeople={};
+function handleSalespeople(e){
+  const file=e.target.files[0];if(!file)return;
+  const isXlsx=file.name.toLowerCase().match(/\.xlsx?$/);
+  const r=new FileReader();
+  r.onload=function(ev){
+    let rows;
+    if(isXlsx){
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    }else{
+      rows=parseCSV(ev.target.result);
+    }
+    if(rows.length<2){document.getElementById('salespeopleStatus').textContent='Ficheiro vazio';return;}
+    const h=rows[0].map(x=>String(x).toLowerCase().trim());
+    const ni=h.findIndex(x=>x.includes('vatnumber')||x.includes('nif')||x.includes('vat'));
+    const cmi=h.findIndex(x=>x.includes('comercial')||x.includes('salesperson')||x.includes('sales')||x.includes('account'));
+    if(ni<0||cmi<0){document.getElementById('salespeopleStatus').innerHTML='<span style="color:var(--red)">Colunas não encontradas (precisa NIF e Comercial)</span>';return;}
+    salespeople={};
+    let count=0;
+    for(let i=1;i<rows.length;i++){
+      const r2=rows[i];if(!r2)continue;
+      let nif=String(r2[ni]||'').trim();
+      if(nif.match(/^\d+\.0$/))nif=nif.replace('.0','');
+      const sp=String(r2[cmi]||'').trim();
+      if(nif&&sp){salespeople[nif]=sp;count++;}
+    }
+    document.getElementById('salespeopleStatus').innerHTML='<span style="color:var(--green)">✓ '+count+' comerciais carregados</span>';
+  };
+  if(isXlsx)r.readAsArrayBuffer(file);
+  else r.readAsText(file);
+}
+
 function handleCSV(e){
   const file=e.target.files[0];if(!file)return;
   const isXlsx=file.name.toLowerCase().match(/\.xlsx?$/);
@@ -569,7 +607,8 @@ function handleCSV(e){
     const ni=h.findIndex(x=>x==='name'||x.includes('attendee name'));
     const ei=h.findIndex(x=>x.includes('email')||x.includes('e-mail do participante')||x.includes('e-mail'));
     const pi=h.findIndex(x=>x.includes('phone')||x.includes('telefone')||x.includes('telemóvel')||x.includes('número de telefone'));
-    const ci=h.findIndex(x=>x.includes('company')||x.includes('empresa')||x.includes('organization')||x.includes('organização'));
+    const ci=h.findIndex(x=>x==='empresa'||x.includes('company')||x.includes('organization')||x.includes('organização'));
+    const vi=h.findIndex(x=>x.includes('nif company')||x.includes('vat')||x.includes('identificação fiscal'));
     const seen={};
     csvAttendees=[];
     let pendingCount=0;
@@ -584,6 +623,9 @@ function handleCSV(e){
       if(phone==='nan'||phone==='NaN')phone='';
       if(phone.match(/^\d+\.0$/))phone=phone.replace('.0','');
       const company=ci>=0?String(r2[ci]||'').trim():'';
+      let nif=vi>=0?String(r2[vi]||'').trim():'';
+      if(nif==='nan'||nif==='NaN')nif='';
+      if(nif.match(/^\d+\.0$/))nif=nif.replace('.0','');
       if(!name&&!email)continue;
       // Duplicate email = extra ticket (companion/guest)
       if(email&&seen[email]){
@@ -601,18 +643,19 @@ function handleCSV(e){
         continue;
       }
       if(email)seen[email]=1;
-      csvAttendees.push({id:'A'+String(csvAttendees.length+1).padStart(4,'0'),name:titleCase(name.trim()),email:email,phone:phone,company:titleCase(company)});
+      const sp=salespeople[nif]||'';
+      csvAttendees.push({id:'A'+String(csvAttendees.length+1).padStart(4,'0'),name:titleCase(name.trim()),email:email,phone:phone,company:titleCase(company),nif:nif,salesperson:sp});
     }
     let statusHtml='✓ '+csvAttendees.length+' registos';
     if(pendingCount>0) statusHtml+=' <span style="color:var(--orange)">('+pendingCount+' acompanhantes por identificar)</span>';
     document.getElementById('csvCount').innerHTML=statusHtml;
     const tbl=document.getElementById('csvPreviewTable');
-    let html='<thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Tel</th><th>Estado</th></tr></thead><tbody>';
+    let html='<thead><tr><th>ID</th><th>Nome</th><th>Empresa</th><th>NIF</th><th>Comercial</th></tr></thead><tbody>';
     csvAttendees.slice(0,8).forEach(a=>{
       if(a.pending){
-        html+='<tr style="color:var(--orange)"><td class="mono">'+a.id+'</td><td>👤 Acompanhante de '+a.boughtBy+'</td><td>—</td><td>—</td><td>⏳ Pendente</td></tr>';
+        html+='<tr style="color:var(--orange)"><td class="mono">'+a.id+'</td><td>👤 Acompanhante de '+a.boughtBy+'</td><td>—</td><td>—</td><td>⏳</td></tr>';
       }else{
-        html+='<tr><td class="mono">'+a.id+'</td><td>'+a.name+'</td><td>'+a.email+'</td><td>'+a.phone+'</td><td style="color:var(--green)">✓</td></tr>';
+        html+='<tr><td class="mono">'+a.id+'</td><td>'+a.name+'</td><td>'+(a.company||'—')+'</td><td>'+(a.nif||'—')+'</td><td>'+(a.salesperson?'<span style="color:var(--accent)">'+a.salesperson+'</span>':'—')+'</td></tr>';
       }
     });
     if(csvAttendees.length>8)html+='<tr><td colspan="5" style="color:var(--text-muted)">+ '+(csvAttendees.length-8)+' mais</td></tr>';
@@ -640,6 +683,7 @@ async function completeStep2(){
   attendees=csvAttendees;
   document.getElementById('step2Btn').textContent=t('uploaded');
   showSetupStep(3);
+  renderStands();
 }
 
 function addStand(){const input=document.getElementById('newStand');const name=input.value.trim();if(!name||setupStands.includes(name))return;setupStands.push(name);input.value='';input.focus();renderStands();}
@@ -790,7 +834,7 @@ function showCommentModal(att,stand){
   const modal=document.getElementById('commentModal');
   modal.className='modal-overlay';
   modal.innerHTML='<div class="modal"><h2>✓ '+att.name+'</h2>'+
-    '<div class="modal-sub">'+(att.company?att.company+' · ':'')+'<strong style="color:var(--accent)">'+stand+'</strong></div>'+
+    '<div class="modal-sub">'+(att.company?att.company+' · ':'')+'<strong style="color:var(--accent)">'+stand+'</strong>'+(att.salesperson?'<br><span style="color:var(--green);font-size:13px">👤 Comercial: '+att.salesperson+'</span>':'')+'</div>'+
     historyHtml+
     '<label>'+t('cm_tags_label')+'</label>'+
     '<div class="quick-tags" id="cmTags">'+tagKeys.map(k=>'<div class="quick-tag" onclick="this.classList.toggle(\'selected\')" data-tag="'+t(k)+'">'+t(k)+'</div>').join('')+'</div>'+
@@ -809,7 +853,7 @@ async function saveComment(attId,stand,skip){
     tags=selTags.join(', ');
     comments=(document.getElementById('cmNotes').value||'').trim();
   }
-  const scan={timestamp:new Date().toISOString(),attendeeId:att.id,attendeeName:att.name,attendeeEmail:att.email,attendeePhone:att.phone||'',attendeeCompany:att.company||'',stand,comments,tags};
+  const scan={timestamp:new Date().toISOString(),attendeeId:att.id,attendeeName:att.name,attendeeEmail:att.email,attendeePhone:att.phone||'',attendeeCompany:att.company||'',attendeeNif:att.nif||'',attendeeSalesperson:att.salesperson||'',stand,comments,tags};
   await addScan(scan);
   addToScanLog(scan);
   // Show quick confirmation then close
@@ -1036,7 +1080,7 @@ function renderDashboard(){
   // Table
   document.getElementById('dashboardBody').innerHTML=filtered.map(s=>{
     const cm=(s.tags?s.tags:'')+(s.tags&&s.comments?' · ':'')+(s.comments||'');
-    return '<tr><td class="mono">'+new Date(s.timestamp).toLocaleString()+'</td><td><strong>'+s.attendeeName+'</strong></td><td>'+s.attendeeEmail+'</td><td>'+(s.attendeePhone||'—')+'</td><td>'+(s.attendeeCompany||'—')+'</td><td><span style="color:var(--accent)">'+s.stand+'</span></td><td><span class="comment-preview" title="'+cm.replace(/"/g,'&quot;')+'">'+(cm||'—')+'</span></td></tr>';}).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">'+t('no_data')+'</td></tr>';
+    return '<tr><td class="mono">'+new Date(s.timestamp).toLocaleString()+'</td><td><strong>'+s.attendeeName+'</strong></td><td>'+s.attendeeEmail+'</td><td>'+(s.attendeePhone||'—')+'</td><td>'+(s.attendeeCompany||'—')+'</td><td>'+(s.attendeeNif||'—')+'</td><td>'+(s.attendeeSalesperson?'<span style="color:var(--accent)">'+s.attendeeSalesperson+'</span>':'—')+'</td><td><span style="color:var(--accent)">'+s.stand+'</span></td><td><span class="comment-preview" title="'+cm.replace(/"/g,'&quot;')+'">'+(cm||'—')+'</span></td></tr>';}).join('')||'<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px">'+t('no_data')+'</td></tr>';
 
   // Matrix: visitor × stand
   renderMatrix();
@@ -1062,7 +1106,7 @@ function renderMatrix(){
   tbl.innerHTML=h+'</tbody>';
 }
 function exportCSV(){if(!scans.length){alert(t('no_scans'));return;}
-let csv='Timestamp,ID,Name,Email,Phone,Company,Stand,Tags,Comments\n';scans.forEach(s=>{csv+='"'+s.timestamp+'","'+s.attendeeId+'","'+s.attendeeName+'","'+s.attendeeEmail+'","'+(s.attendeePhone||'')+'","'+(s.attendeeCompany||'')+'","'+s.stand+'","'+(s.tags||'')+'","'+(s.comments||'').replace(/"/g,'""')+'"\n';});
+let csv='Timestamp,ID,Name,Email,Phone,Company,NIF,Salesperson,Stand,Tags,Comments\n';scans.forEach(s=>{csv+='"'+s.timestamp+'","'+s.attendeeId+'","'+s.attendeeName+'","'+s.attendeeEmail+'","'+(s.attendeePhone||'')+'","'+(s.attendeeCompany||'')+'","'+(s.attendeeNif||'')+'","'+(s.attendeeSalesperson||'')+'","'+s.stand+'","'+(s.tags||'')+'","'+(s.comments||'').replace(/"/g,'""')+'"\n';});
 const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='event_scans.csv';a.click();URL.revokeObjectURL(url);}
 
 // ═══════════════════════════════════════════
