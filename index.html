@@ -602,13 +602,18 @@ function handleCSV(e){
     if(rows.length<2)return;
     const h=rows[0].map(x=>String(x).toLowerCase().trim());
     // Support both English (Eventbrite EN) and Portuguese (Eventbrite PT) column names
-    const fi=h.findIndex(x=>x.includes('first name')||x==='first'||x.includes('nome do participante')||x==='nome');
-    const li=h.findIndex(x=>x.includes('last name')||x==='last'||x.includes('sobrenome do participante')||x==='sobrenome'||x==='apelido');
+    const fi=h.findIndex(x=>x==='nome'||x==='first name'||x==='first'||x.includes('nome do participante'));
+    const li=h.findIndex(x=>x==='apelido'||x==='last name'||x==='last'||x.includes('sobrenome do participante')||x==='sobrenome');
     const ni=h.findIndex(x=>x==='name'||x.includes('attendee name'));
-    const ei=h.findIndex(x=>x.includes('email')||x.includes('e-mail do participante')||x.includes('e-mail'));
-    const pi=h.findIndex(x=>x.includes('phone')||x.includes('telefone')||x.includes('telemóvel')||x.includes('número de telefone'));
-    const ci=h.findIndex(x=>x==='empresa'||x.includes('company')||x.includes('organization')||x.includes('organização'));
-    const vi=h.findIndex(x=>x.includes('nif company')||x.includes('vat')||x.includes('identificação fiscal'));
+    const ei=h.findIndex(x=>x==='correio eletrónico'||x.includes('email')||x.includes('e-mail do participante')||x.includes('e-mail'));
+    const pi=h.findIndex(x=>x==='phone'||x==='telefone'||x==='telemóvel'||x.includes('número de telefone')||x.includes('phone'));
+    // Prefer exact match "empresa" or "company" (not "nome/empresa no recibo")
+    let ci=h.findIndex(x=>x==='empresa'||x==='company');
+    if(ci<0) ci=h.findIndex(x=>x.includes('organization')||x.includes('organização'));
+    // Prefer "NIF Company / Organisation" or VAT over personal "Identificação fiscal"
+    let vi=h.findIndex(x=>x.includes('nif company')||x==='vat'||x.includes('vat number')||x.includes('vatnumber'));
+    if(vi<0) vi=h.findIndex(x=>x==='identificação fiscal'||x==='nif');
+    console.log('Column indexes:',{fi,li,ni,ei,pi,ci,vi,headers:h});
     const seen={};
     csvAttendees=[];
     let pendingCount=0;
