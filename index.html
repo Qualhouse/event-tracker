@@ -141,13 +141,13 @@ body{background:#fff!important;margin:0!important;padding:0!important;-webkit-pr
 .badge-card{border-radius:0!important;box-shadow:none!important;border:none!important;
   page-break-after:always!important;width:80mm!important;height:60mm!important;box-sizing:border-box!important;margin:0!important;
   display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
-  text-align:center!important;padding:3mm!important}
+  text-align:center!important;padding:3mm!important;color:#000!important}
 .badge-card .badge-right{align-items:center!important;text-align:center!important;width:100%!important;border:none!important;padding:0!important}
 .badge-card .badge-left{padding:1mm 0!important}
-.badge-card .badge-name{font-size:13pt!important;font-weight:800!important;margin-bottom:1mm!important;line-height:1.1!important}
-.badge-card .badge-company{font-size:9pt!important;color:#e28a32!important;margin-top:1mm!important;line-height:1.2!important}
-.badge-card .badge-id{font-size:7pt!important;color:#999!important;margin-top:1mm!important}
-.badge-card .qr-container img,.badge-card .qr-container canvas,.badge-card .qr-img{width:24mm!important;height:24mm!important}
+.badge-card .badge-name{font-size:18pt!important;font-weight:800!important;margin-bottom:1mm!important;line-height:1.1!important;color:#000!important}
+.badge-card .badge-company{font-size:13pt!important;color:#000!important;font-weight:700!important;margin-top:2mm!important;line-height:1.2!important}
+.badge-card .badge-id{font-size:8pt!important;color:#000!important;margin-top:2mm!important}
+.badge-card .qr-container img,.badge-card .qr-container canvas,.badge-card .qr-img{width:34mm!important;height:34mm!important}
 }
 @page{size:80mm 60mm;margin:0}
 @media(max-width:768px){h1{font-size:20px}.stats-row{grid-template-columns:repeat(2,1fr)}}
@@ -251,7 +251,8 @@ body{background:#fff!important;margin:0!important;padding:0!important;-webkit-pr
       <div style="margin-bottom:10px"><label data-i18n="full_name"></label><input type="text" id="walkinName"></div>
       <div style="margin-bottom:10px"><label data-i18n="phone"></label><input type="tel" id="walkinPhone"></div>
       <div style="margin-bottom:10px"><label>Email *</label><input type="email" id="walkinEmail"></div>
-      <div style="margin-bottom:14px"><label data-i18n="company_optional"></label><input type="text" id="walkinCompany"></div>
+      <div style="margin-bottom:10px"><label data-i18n="company_optional"></label><input type="text" id="walkinCompany"></div>
+      <div style="margin-bottom:14px"><label>NIF <span style="color:var(--text-muted)">(opcional)</span></label><input type="text" id="walkinNif" inputmode="numeric" maxlength="9" placeholder="Para associar comercial"></div>
       <button class="btn btn-success btn-lg" style="width:100%" onclick="registerWalkin()" data-i18n="register_badge"></button>
     </div>
     <div id="walkinBadgeResult" class="hidden" style="width:100%;max-width:420px">
@@ -879,24 +880,26 @@ async function saveComment(attId,stand,skip){
 // WALK-IN REGISTRATION
 // ═══════════════════════════════════════════
 async function registerWalkin(){
-  const name=document.getElementById('walkinName').value.trim(),email=document.getElementById('walkinEmail').value.trim(),phone=document.getElementById('walkinPhone').value.trim(),company=document.getElementById('walkinCompany').value.trim();
+  const name=document.getElementById('walkinName').value.trim(),email=document.getElementById('walkinEmail').value.trim(),phone=document.getElementById('walkinPhone').value.trim(),company=document.getElementById('walkinCompany').value.trim(),nif=document.getElementById('walkinNif').value.trim();
   if(!name||!email){alert(t('enter_name_email'));return;}
   if(attendees.find(a=>a.email.toLowerCase()===email.toLowerCase())){alert('Email já registado.');return;}
   const id='W'+Date.now().toString(36)+Math.random().toString(36).substr(2,3);
-  const att={id,name:titleCase(name),email,phone,company:titleCase(company),walkin:true,createdAt:new Date().toISOString()};
+  const sp=nif?(salespeople[nif]||''):'';
+  const att={id,name:titleCase(name),email,phone,company:titleCase(company),nif,salesperson:sp,walkin:true,createdAt:new Date().toISOString()};
   await addAttendee(att);
   // Show badge in modal
   const modal=document.getElementById('commentModal');
   modal.className='modal-overlay';
   modal.innerHTML='<div class="modal" style="text-align:center">'+
     '<div style="color:var(--green);font-weight:700;font-size:16px;margin-bottom:12px">✓ '+t('registered_ok')+'</div>'+
+    (sp?'<div style="color:var(--accent);font-size:13px;margin-bottom:10px">👤 Comercial: '+sp+'</div>':'')+
     '<div class="badge-card" style="margin:0 auto;max-width:300px;text-align:center" id="walkinBadgeModal">'+
       '<div class="badge-right">'+
-        '<div class="badge-name">'+name+'</div>'+
+        '<div class="badge-name">'+titleCase(name)+'</div>'+
       '</div>'+
       '<div class="badge-left"><img src="'+makeQrUrl(id)+'" class="qr-img" width="130" height="130"></div>'+
       '<div class="badge-right" style="border:none;padding-top:0">'+
-        (company?'<div class="badge-company">'+company+'</div>':'')+
+        (company?'<div class="badge-company">'+titleCase(company)+'</div>':'')+
         '<div class="badge-id">'+id+'</div>'+
       '</div>'+
     '</div>'+
@@ -905,7 +908,7 @@ async function registerWalkin(){
       '<button class="btn btn-secondary" onclick="closeBadgeModal()">'+t('register_another')+'</button>'+
     '</div></div>';
   // QR generated via img src
-  ['walkinName','walkinEmail','walkinPhone','walkinCompany'].forEach(x=>document.getElementById(x).value='');
+  ['walkinName','walkinEmail','walkinPhone','walkinCompany','walkinNif'].forEach(x=>document.getElementById(x).value='');
 }
 function closeWalkinResult(){document.getElementById('walkinBadgeResult').classList.add('hidden');document.getElementById('walkinName').focus();}
 
@@ -1028,15 +1031,15 @@ function printSingleBadgeFromEl(elId){
   printWin.document.write('<html><head><title>Badge</title>');
   printWin.document.write('<style>');
   printWin.document.write('@page{size:80mm 60mm;margin:0}');
-  printWin.document.write('body{margin:0;padding:0;display:flex;align-items:center;justify-content:center;width:80mm;height:60mm;font-family:"DM Sans",sans-serif}');
+  printWin.document.write('body{margin:0;padding:0;display:flex;align-items:center;justify-content:center;width:80mm;height:60mm;font-family:"DM Sans",sans-serif;color:#000}');
   printWin.document.write('.badge-card{background:#fff;color:#000;width:80mm;height:60mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;padding:3mm}');
   printWin.document.write('.badge-top,.badge-logo,.badge-event{display:none}');
   printWin.document.write('.badge-left{padding:1mm 0}');
   printWin.document.write('.badge-right{padding:0;text-align:center;width:100%}');
-  printWin.document.write('.badge-name{font-size:13pt;font-weight:800;margin-bottom:1mm;line-height:1.1}');
-  printWin.document.write('.badge-company{font-size:9pt;color:#e28a32;font-weight:700;margin-top:1mm;line-height:1.2}');
-  printWin.document.write('.badge-id{font-family:monospace;font-size:7pt;color:#999;margin-top:1mm}');
-  printWin.document.write('canvas,img{max-width:24mm!important;max-height:24mm!important}');
+  printWin.document.write('.badge-name{font-size:18pt;font-weight:800;margin-bottom:1mm;line-height:1.1;color:#000}');
+  printWin.document.write('.badge-company{font-size:13pt;color:#000;font-weight:700;margin-top:2mm;line-height:1.2}');
+  printWin.document.write('.badge-id{font-family:monospace;font-size:8pt;color:#000;margin-top:2mm}');
+  printWin.document.write('canvas,img{max-width:34mm!important;max-height:34mm!important}');
   printWin.document.write('</style></head><body>');
   printWin.document.write(badge.outerHTML);
   printWin.document.write('</body></html>');
