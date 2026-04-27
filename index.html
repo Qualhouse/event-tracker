@@ -137,22 +137,19 @@ body{background:#fff!important;margin:0!important;padding:0!important;-webkit-pr
 #badgesView>h1,#badgesView>p,#badgesView>.badge-actions,#badgesView>.subtitle{display:none!important}
 .badges-grid{display:block!important;max-width:none!important}
 .badges-grid>p{display:none!important}
-.badge-card{border-radius:0!important;box-shadow:none!important;border:none!important;border-top:6px solid #e28a32!important;
-  page-break-after:always!important;width:4in!important;height:6in!important;box-sizing:border-box!important;margin:0!important;
+.badge-card .badge-top,.badge-card .badge-logo,.badge-card .badge-event{display:none!important}
+.badge-card{border-radius:0!important;box-shadow:none!important;border:none!important;
+  page-break-after:always!important;width:80mm!important;height:60mm!important;box-sizing:border-box!important;margin:0!important;
   display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
-  text-align:center!important;padding:8mm!important}
-.badge-card .badge-right{align-items:center!important;text-align:center!important;width:100%!important;border:none!important;padding:2mm 0!important}
-.badge-card .badge-left{padding:4mm 0!important}
-.badge-card .badge-top{justify-content:center!important;margin-bottom:5mm!important;padding-bottom:4mm!important;border-bottom:1px solid #ddd!important}
-.badge-card .badge-name{font-size:26pt!important;font-weight:800!important;margin-bottom:2mm!important}
-.badge-card .badge-company{font-size:14pt!important;color:#e28a32!important;margin-bottom:2mm!important}
-.badge-card .badge-detail{font-size:11pt!important;color:#333!important}
-.badge-card .badge-logo{height:10mm!important}
-.badge-card .badge-event{font-size:10pt!important}
-.badge-card .badge-id{font-size:9pt!important;color:#aaa!important;margin-top:4mm!important}
-.badge-card .qr-container img,.badge-card .qr-container canvas{width:32mm!important;height:32mm!important}
+  text-align:center!important;padding:3mm!important}
+.badge-card .badge-right{align-items:center!important;text-align:center!important;width:100%!important;border:none!important;padding:0!important}
+.badge-card .badge-left{padding:1mm 0!important}
+.badge-card .badge-name{font-size:13pt!important;font-weight:800!important;margin-bottom:1mm!important;line-height:1.1!important}
+.badge-card .badge-company{font-size:9pt!important;color:#e28a32!important;margin-top:1mm!important;line-height:1.2!important}
+.badge-card .badge-id{font-size:7pt!important;color:#999!important;margin-top:1mm!important}
+.badge-card .qr-container img,.badge-card .qr-container canvas,.badge-card .qr-img{width:24mm!important;height:24mm!important}
 }
-@page{size:4in 6in;margin:0}
+@page{size:80mm 60mm;margin:0}
 @media(max-width:768px){h1{font-size:20px}.stats-row{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -895,12 +892,11 @@ async function registerWalkin(){
     '<div style="color:var(--green);font-weight:700;font-size:16px;margin-bottom:12px">✓ '+t('registered_ok')+'</div>'+
     '<div class="badge-card" style="margin:0 auto;max-width:300px;text-align:center" id="walkinBadgeModal">'+
       '<div class="badge-right">'+
-        '<div class="badge-top"><img src="data:image/png;base64,'+BADGE_LOGO_DARK+'" alt="" class="badge-logo"><span class="badge-event">'+(eventData?eventData.name:'')+'</span></div>'+
         '<div class="badge-name">'+name+'</div>'+
-        (company?'<div class="badge-company">'+company+'</div>':'')+
       '</div>'+
       '<div class="badge-left"><img src="'+makeQrUrl(id)+'" class="qr-img" width="130" height="130"></div>'+
       '<div class="badge-right" style="border:none;padding-top:0">'+
+        (company?'<div class="badge-company">'+company+'</div>':'')+
         '<div class="badge-id">'+id+'</div>'+
       '</div>'+
     '</div>'+
@@ -977,12 +973,11 @@ async function completeGuest(id){
     '<div style="color:var(--green);font-weight:700;font-size:16px;margin-bottom:12px">✓ '+t('registered_ok')+'</div>'+
     '<div class="badge-card" style="margin:0 auto;max-width:300px;text-align:center" id="guestBadgeCard">'+
       '<div class="badge-right">'+
-        '<div class="badge-top"><img src="data:image/png;base64,'+BADGE_LOGO_DARK+'" alt="" class="badge-logo"><span class="badge-event">'+(eventData?eventData.name:'')+'</span></div>'+
         '<div class="badge-name">'+name+'</div>'+
-        (company?'<div class="badge-company">'+company+'</div>':'')+
       '</div>'+
       '<div class="badge-left"><img src="'+makeQrUrl(id)+'" class="qr-img" width="130" height="130"></div>'+
       '<div class="badge-right" style="border:none;padding-top:0">'+
+        (company?'<div class="badge-company">'+company+'</div>':'')+
         '<div class="badge-id">'+id+'</div>'+
       '</div>'+
     '</div>'+
@@ -1032,19 +1027,16 @@ function printSingleBadgeFromEl(elId){
   const printWin=window.open('','_blank','width=600,height=800');
   printWin.document.write('<html><head><title>Badge</title>');
   printWin.document.write('<style>');
-  printWin.document.write('@page{size:4in 6in;margin:0}');
-  printWin.document.write('body{margin:0;padding:0;display:flex;align-items:center;justify-content:center;width:4in;height:6in;font-family:"DM Sans",sans-serif}');
-  printWin.document.write('.badge-card{background:#fff;color:#000;width:4in;height:6in;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-top:6px solid #e28a32;box-sizing:border-box;padding:8mm}');
-  printWin.document.write('.badge-left{padding:4mm 0}');
-  printWin.document.write('.badge-right{padding:2mm 8mm;text-align:center;width:100%}');
-  printWin.document.write('.badge-top{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:5mm;padding-bottom:4mm;border-bottom:1px solid #ddd}');
-  printWin.document.write('.badge-name{font-size:26pt;font-weight:800;margin-bottom:2mm}');
-  printWin.document.write('.badge-company{font-size:14pt;color:#e28a32;font-weight:700;margin-bottom:2mm}');
-  printWin.document.write('.badge-detail{font-size:11pt;color:#333}');
-  printWin.document.write('.badge-logo{height:10mm}');
-  printWin.document.write('.badge-event{font-size:10pt;color:#999;text-transform:uppercase;letter-spacing:.5px}');
-  printWin.document.write('.badge-id{font-family:monospace;font-size:9pt;color:#aaa;margin-top:4mm}');
-  printWin.document.write('canvas,img{max-width:32mm!important;max-height:32mm!important}');
+  printWin.document.write('@page{size:80mm 60mm;margin:0}');
+  printWin.document.write('body{margin:0;padding:0;display:flex;align-items:center;justify-content:center;width:80mm;height:60mm;font-family:"DM Sans",sans-serif}');
+  printWin.document.write('.badge-card{background:#fff;color:#000;width:80mm;height:60mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;padding:3mm}');
+  printWin.document.write('.badge-top,.badge-logo,.badge-event{display:none}');
+  printWin.document.write('.badge-left{padding:1mm 0}');
+  printWin.document.write('.badge-right{padding:0;text-align:center;width:100%}');
+  printWin.document.write('.badge-name{font-size:13pt;font-weight:800;margin-bottom:1mm;line-height:1.1}');
+  printWin.document.write('.badge-company{font-size:9pt;color:#e28a32;font-weight:700;margin-top:1mm;line-height:1.2}');
+  printWin.document.write('.badge-id{font-family:monospace;font-size:7pt;color:#999;margin-top:1mm}');
+  printWin.document.write('canvas,img{max-width:24mm!important;max-height:24mm!important}');
   printWin.document.write('</style></head><body>');
   printWin.document.write(badge.outerHTML);
   printWin.document.write('</body></html>');
@@ -1063,12 +1055,11 @@ printable.forEach(a=>{
   const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(qrData);
   card.innerHTML=
     '<div class="badge-right">'+
-      '<div class="badge-top"><img src="data:image/png;base64,'+BADGE_LOGO_DARK+'" alt="" class="badge-logo"><span class="badge-event">'+evName+'</span></div>'+
       '<div class="badge-name">'+a.name+'</div>'+
-      (a.company?'<div class="badge-company">'+a.company+'</div>':'')+
     '</div>'+
     '<div class="badge-left"><img src="'+qrUrl+'" class="qr-img" alt="QR" width="130" height="130"></div>'+
     '<div class="badge-right" style="border:none;padding-top:0">'+
+      (a.company?'<div class="badge-company">'+a.company+'</div>':'')+
       '<div class="badge-id">'+a.id+'</div>'+
     '</div>';
   grid.appendChild(card);
