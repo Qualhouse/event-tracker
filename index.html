@@ -662,7 +662,7 @@ function handleCSV(e){
     let html='<thead><tr><th>ID</th><th>Nome</th><th>Empresa</th><th>NIF</th><th>Comercial</th></tr></thead><tbody>';
     csvAttendees.slice(0,8).forEach(a=>{
       if(a.pending){
-        html+='<tr style="color:var(--orange)"><td class="mono">'+a.id+'</td><td>👤 Acompanhante de '+a.boughtBy+'</td><td>—</td><td>—</td><td>⏳</td></tr>';
+        html+='<tr style="color:var(--orange)"><td class="mono">'+a.id+'</td><td>👤 Acompanhante de '+a.boughtBy+'</td><td>'+(a.company||'—')+'</td><td>'+(a.nif||'—')+'</td><td>'+(a.salesperson?'<span style="color:var(--accent)">'+a.salesperson+'</span>':'—')+'</td></tr>';
       }else{
         html+='<tr><td class="mono">'+a.id+'</td><td>'+a.name+'</td><td>'+(a.company||'—')+'</td><td>'+(a.nif||'—')+'</td><td>'+(a.salesperson?'<span style="color:var(--accent)">'+a.salesperson+'</span>':'—')+'</td></tr>';
       }
